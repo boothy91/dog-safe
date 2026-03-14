@@ -10,12 +10,14 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <!-- Top overlay: header + search + chips -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:layout_gravity="top">
 
+        <!-- Header -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -49,7 +51,7 @@
                     android:id="@+id/statusText"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Select an area"
+                    android:text="Search or select an area"
                     android:textColor="#CCFFFFFF"
                     android:textSize="11sp"/>
             </LinearLayout>
@@ -62,6 +64,68 @@
                 android:indeterminateTint="#FFFFFF"/>
         </LinearLayout>
 
+        <!-- Search bar -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#F5F0E8"
+            android:orientation="horizontal"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="4dp"
+            android:gravity="center_vertical">
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/searchLayout"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
+                app:boxCornerRadiusTopStart="24dp"
+                app:boxCornerRadiusTopEnd="24dp"
+                app:boxCornerRadiusBottomStart="24dp"
+                app:boxCornerRadiusBottomEnd="24dp"
+                app:boxStrokeColor="#2d5a27"
+                app:hintTextColor="#2d5a27"
+                android:hint="Postcode, place or area name">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/searchInput"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:imeOptions="actionSearch"
+                    android:inputType="text"
+                    android:maxLines="1"
+                    android:textSize="14sp"
+                    android:paddingStart="16dp"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/searchButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="Search"
+                android:textColor="#FFFFFF"
+                android:textSize="13sp"
+                app:backgroundTint="#2d5a27"
+                app:cornerRadius="20dp"/>
+        </LinearLayout>
+
+        <!-- Search results dropdown -->
+        <ListView
+            android:id="@+id/searchResults"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#FFFFFF"
+            android:visibility="gone"
+            android:elevation="8dp"
+            android:divider="#F0EDE8"
+            android:dividerHeight="1dp"
+            android:maxHeight="200dp"/>
+
+        <!-- Area chips -->
         <HorizontalScrollView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -69,7 +133,7 @@
             android:scrollbars="none"
             android:paddingStart="8dp"
             android:paddingEnd="8dp"
-            android:paddingTop="6dp"
+            android:paddingTop="4dp"
             android:paddingBottom="6dp">
 
             <com.google.android.material.chip.ChipGroup
@@ -81,7 +145,21 @@
         </HorizontalScrollView>
     </LinearLayout>
 
-    <!-- Legend - hidden when bottom sheet opens -->
+    <!-- Location FAB -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/locationFab"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="80dp"
+        android:src="@android:drawable/ic_menu_mylocation"
+        android:contentDescription="My location"
+        app:backgroundTint="#2d5a27"
+        app:tint="#FFFFFF"
+        app:elevation="6dp"/>
+
+    <!-- Legend -->
     <LinearLayout
         android:id="@+id/legend"
         android:layout_width="wrap_content"
@@ -193,7 +271,6 @@
         <View android:layout_width="match_parent" android:layout_height="1dp"
             android:background="#F0EDE8" android:layout_marginBottom="12dp"/>
 
-        <!-- Row 1: Purpose + Case Number -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -223,7 +300,6 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- Row 2: From + Until -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
