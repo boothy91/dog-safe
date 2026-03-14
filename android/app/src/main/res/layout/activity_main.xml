@@ -88,7 +88,10 @@
                 app:boxCornerRadiusBottomStart="24dp"
                 app:boxCornerRadiusBottomEnd="24dp"
                 app:boxStrokeColor="#2d5a27"
+        app:boxBackgroundColor="#FFFFFF"
                 app:hintTextColor="#555555"
+        app:placeholderTextColor="#555555"
+        app:prefixTextColor="#555555"
                 
                 android:hint="Postcode, place or area name">
 
