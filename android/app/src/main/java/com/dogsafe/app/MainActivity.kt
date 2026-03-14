@@ -179,7 +179,7 @@ class MainActivity : AppCompatActivity() {
                     // Multiple results — show dropdown
                     val adapter = ArrayAdapter(
                         this@MainActivity,
-                        android.R.layout.simple_list_item_1,
+                        R.layout.item_search_result,
                         results.map { it.displayName }
                     )
                     binding.searchResults.adapter = adapter
