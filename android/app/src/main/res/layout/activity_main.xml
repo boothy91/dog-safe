@@ -89,7 +89,7 @@
                 app:boxCornerRadiusBottomEnd="24dp"
                 app:boxStrokeColor="#2d5a27"
                 app:hintTextColor="#555555"
-                app:defaultHintTextColor="#555555"
+                
                 android:hint="Postcode, place or area name">
 
                 <com.google.android.material.textfield.TextInputEditText
