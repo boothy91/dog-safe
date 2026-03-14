@@ -98,19 +98,14 @@ class RoutesFragment : Fragment() {
         viewModel.loadRoutes(requireContext())
     }
 
+    }
+
     private fun openFilePicker() {
-        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-            addCategory(Intent.CATEGORY_OPENABLE)
+        val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
             type = "*/*"
-            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf(
-                "application/gpx+xml",
-                "application/octet-stream",
-                "text/xml",
-                "text/plain",
-                "*/*"
-            ))
+            addCategory(Intent.CATEGORY_OPENABLE)
         }
-        filePicker.launch(intent)
+        filePicker.launch(Intent.createChooser(intent, "Select GPX file"))
     }
 
     private fun confirmDelete(route: com.dogsafe.app.db.RouteEntity) {
