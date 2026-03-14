@@ -109,6 +109,10 @@ class MainActivity : AppCompatActivity() {
                     BottomSheetBehavior.STATE_HIDDEN -> View.VISIBLE
                     else -> View.GONE
                 }
+                binding.locationFab.visibility = when (newState) {
+                    BottomSheetBehavior.STATE_HIDDEN -> View.VISIBLE
+                    else -> View.GONE
+                }
             }
             override fun onSlide(view: View, slideOffset: Float) {}
         })
