@@ -10,7 +10,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <!-- Top overlay: header + search + chips -->
+    <!-- Top overlay -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -26,12 +26,13 @@
             android:orientation="horizontal"
             android:gravity="center_vertical">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="🐕"
-                android:textSize="24sp"
-                android:paddingEnd="10dp"/>
+            <ImageView
+                android:id="@+id/appLogo"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_marginEnd="10dp"
+                android:src="@mipmap/ic_launcher"
+                android:contentDescription="Dog Safe"/>
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -88,7 +89,7 @@
                 app:boxCornerRadiusBottomEnd="24dp"
                 app:boxStrokeColor="#2d5a27"
                 app:hintTextColor="#555555"
-        app:defaultHintTextColor="#555555"
+                app:defaultHintTextColor="#555555"
                 android:hint="Postcode, place or area name">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -101,7 +102,7 @@
                     android:textColor="#000000"
                     android:textColorHint="#555555"
                     android:textSize="14sp"
-                    android:paddingStart="16dp"
+                    android:paddingStart="16dp"/>
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.button.MaterialButton
@@ -125,8 +126,7 @@
             android:visibility="gone"
             android:elevation="8dp"
             android:divider="#F0EDE8"
-            android:dividerHeight="1dp"
-            android:maxHeight="200dp"/>
+            android:dividerHeight="1dp"/>
 
         <!-- Area chips -->
         <HorizontalScrollView
@@ -339,7 +339,7 @@
             android:layout_marginStart="16dp"
             android:layout_marginEnd="16dp"
             android:layout_marginBottom="56dp"
-            android:text="📄 View Official Restriction Map (PDF)"
+            android:text="View Official Restriction Map (PDF)"
             android:textColor="#FFFFFF"
             app:backgroundTint="#2d5a27"/>
 
