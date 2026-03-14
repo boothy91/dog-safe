@@ -87,7 +87,8 @@
                 app:boxCornerRadiusBottomStart="24dp"
                 app:boxCornerRadiusBottomEnd="24dp"
                 app:boxStrokeColor="#2d5a27"
-                app:hintTextColor="#2d5a27"
+                app:hintTextColor="#555555"
+        app:defaultHintTextColor="#555555"
                 android:hint="Postcode, place or area name">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -97,10 +98,10 @@
                     android:imeOptions="actionSearch"
                     android:inputType="text"
                     android:maxLines="1"
+                    android:textColor="#000000"
+                    android:textColorHint="#555555"
                     android:textSize="14sp"
                     android:paddingStart="16dp"
-                    android:textColor="#000000"
-                    android:textColorHint="#666666"/>
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.button.MaterialButton
