@@ -5,20 +5,17 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <!-- Full screen map -->
     <org.osmdroid.views.MapView
         android:id="@+id/map"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <!-- Top overlay: header + area chips -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:layout_gravity="top">
 
-        <!-- Header -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -65,7 +62,6 @@
                 android:indeterminateTint="#FFFFFF"/>
         </LinearLayout>
 
-        <!-- Area chip scroller -->
         <HorizontalScrollView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -85,8 +81,9 @@
         </HorizontalScrollView>
     </LinearLayout>
 
-    <!-- Legend bottom-left -->
+    <!-- Legend - hidden when bottom sheet opens -->
     <LinearLayout
+        android:id="@+id/legend"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|start"
@@ -102,25 +99,32 @@
             android:layout_height="wrap_content"
             android:text="Dog Restrictions"
             android:textSize="10sp"
+            android:textColor="#2c1810"
             android:textStyle="bold"
             android:paddingBottom="4dp"/>
 
-        <!-- No Dogs -->
-        <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:paddingBottom="2dp">
-            <View android:layout_width="10dp" android:layout_height="10dp" android:background="#ef4444" android:layout_marginEnd="6dp"/>
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="No Dogs" android:textSize="10sp"/>
+        <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:gravity="center_vertical" android:paddingBottom="2dp">
+            <View android:layout_width="10dp" android:layout_height="10dp"
+                android:background="#ef4444" android:layout_marginEnd="6dp"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="No Dogs" android:textSize="10sp" android:textColor="#2c1810"/>
         </LinearLayout>
 
-        <!-- No Dogs except assistance -->
-        <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:paddingBottom="2dp">
-            <View android:layout_width="10dp" android:layout_height="10dp" android:background="#f97316" android:layout_marginEnd="6dp"/>
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="No Dogs (except assistance)" android:textSize="10sp"/>
+        <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:gravity="center_vertical" android:paddingBottom="2dp">
+            <View android:layout_width="10dp" android:layout_height="10dp"
+                android:background="#f97316" android:layout_marginEnd="6dp"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="No Dogs (except assistance)" android:textSize="10sp" android:textColor="#2c1810"/>
         </LinearLayout>
 
-        <!-- Dogs on lead -->
-        <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
-            <View android:layout_width="10dp" android:layout_height="10dp" android:background="#eab308" android:layout_marginEnd="6dp"/>
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Dogs on Lead / Routes" android:textSize="10sp"/>
+        <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:gravity="center_vertical">
+            <View android:layout_width="10dp" android:layout_height="10dp"
+                android:background="#eab308" android:layout_marginEnd="6dp"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="Dogs on Lead / Routes" android:textSize="10sp" android:textColor="#2c1810"/>
         </LinearLayout>
     </LinearLayout>
 
@@ -135,7 +139,6 @@
         app:behavior_hideable="true"
         app:behavior_peekHeight="0dp">
 
-        <!-- Handle -->
         <View
             android:layout_width="40dp"
             android:layout_height="4dp"
@@ -143,13 +146,15 @@
             android:layout_marginTop="8dp"
             android:background="#DDDDDD"/>
 
-        <!-- Sheet header -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:padding="16dp">
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="8dp">
 
             <TextView
                 android:id="@+id/detailType"
@@ -158,6 +163,7 @@
                 android:layout_weight="1"
                 android:textSize="16sp"
                 android:textStyle="bold"
+                android:textColor="#2c1810"
                 android:text="Restriction"/>
 
             <TextView
@@ -165,61 +171,95 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="ACTIVE"
+                android:textColor="#166534"
                 android:textSize="11sp"
                 android:textStyle="bold"
                 android:paddingStart="10dp"
                 android:paddingEnd="10dp"
                 android:paddingTop="4dp"
-                android:paddingBottom="4dp"/>
+                android:paddingBottom="4dp"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/badge_active"/>
 
             <ImageButton
                 android:id="@+id/bottomSheetClose"
                 android:layout_width="32dp"
                 android:layout_height="32dp"
-                android:layout_marginStart="8dp"
                 android:background="@drawable/circle_bg"
                 android:src="@android:drawable/ic_menu_close_clear_cancel"
                 android:contentDescription="Close"/>
         </LinearLayout>
 
-        <!-- Detail grid -->
-        <GridLayout
+        <View android:layout_width="match_parent" android:layout_height="1dp"
+            android:background="#F0EDE8" android:layout_marginBottom="12dp"/>
+
+        <!-- Row 1: Purpose + Case Number -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:columnCount="2"
+            android:orientation="horizontal"
             android:paddingStart="16dp"
             android:paddingEnd="16dp"
-            android:paddingBottom="8dp">
+            android:paddingBottom="12dp">
 
-            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_columnWeight="1" android:orientation="vertical" android:paddingBottom="12dp">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="PURPOSE" android:textSize="10sp" android:textColor="#888888" android:paddingBottom="2dp"/>
-                <TextView android:id="@+id/detailPurpose" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="13sp" android:textStyle="bold" android:text="—"/>
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="PURPOSE" android:textSize="10sp" android:textColor="#888888"
+                    android:paddingBottom="3dp"/>
+                <TextView android:id="@+id/detailPurpose" android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" android:textSize="13sp"
+                    android:textStyle="bold" android:textColor="#2c1810" android:text="—"/>
             </LinearLayout>
 
-            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_columnWeight="1" android:orientation="vertical" android:paddingBottom="12dp">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="CASE NUMBER" android:textSize="10sp" android:textColor="#888888" android:paddingBottom="2dp"/>
-                <TextView android:id="@+id/detailCase" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="13sp" android:textStyle="bold" android:text="—"/>
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="CASE NUMBER" android:textSize="10sp" android:textColor="#888888"
+                    android:paddingBottom="3dp"/>
+                <TextView android:id="@+id/detailCase" android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" android:textSize="13sp"
+                    android:textStyle="bold" android:textColor="#2c1810" android:text="—"/>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Row 2: From + Until -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="16dp">
+
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="FROM" android:textSize="10sp" android:textColor="#888888"
+                    android:paddingBottom="3dp"/>
+                <TextView android:id="@+id/detailFrom" android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" android:textSize="13sp"
+                    android:textStyle="bold" android:textColor="#2c1810" android:text="—"/>
             </LinearLayout>
 
-            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_columnWeight="1" android:orientation="vertical">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="FROM" android:textSize="10sp" android:textColor="#888888" android:paddingBottom="2dp"/>
-                <TextView android:id="@+id/detailFrom" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="13sp" android:textStyle="bold" android:text="—"/>
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="UNTIL" android:textSize="10sp" android:textColor="#888888"
+                    android:paddingBottom="3dp"/>
+                <TextView android:id="@+id/detailUntil" android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" android:textSize="13sp"
+                    android:textStyle="bold" android:textColor="#2c1810" android:text="—"/>
             </LinearLayout>
+        </LinearLayout>
 
-            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_columnWeight="1" android:orientation="vertical">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="UNTIL" android:textSize="10sp" android:textColor="#888888" android:paddingBottom="2dp"/>
-                <TextView android:id="@+id/detailUntil" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="13sp" android:textStyle="bold" android:text="—"/>
-            </LinearLayout>
-        </GridLayout>
-
-        <!-- PDF button -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/viewPdfButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
             android:layout_marginEnd="16dp"
-            android:layout_marginBottom="16dp"
+            android:layout_marginBottom="24dp"
             android:text="📄 View Official Restriction Map (PDF)"
             android:textColor="#FFFFFF"
             app:backgroundTint="#2d5a27"/>

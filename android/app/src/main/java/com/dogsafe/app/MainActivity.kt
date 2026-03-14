@@ -83,6 +83,16 @@ class MainActivity : AppCompatActivity() {
         binding.bottomSheetClose.setOnClickListener {
             bottomSheet.state = BottomSheetBehavior.STATE_HIDDEN
         }
+
+        bottomSheet.addBottomSheetCallback(object : BottomSheetBehavior.BottomSheetCallback() {
+            override fun onStateChanged(view: View, newState: Int) {
+                binding.legend.visibility = when (newState) {
+                    BottomSheetBehavior.STATE_HIDDEN -> View.VISIBLE
+                    else -> View.GONE
+                }
+            }
+            override fun onSlide(view: View, slideOffset: Float) {}
+        })
     }
 
     private fun setupAreaButtons() {
