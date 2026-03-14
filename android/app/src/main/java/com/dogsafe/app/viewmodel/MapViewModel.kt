@@ -31,7 +31,7 @@ class MapViewModel : ViewModel() {
         fetchJob?.cancel()
         fetchJob = viewModelScope.launch {
             delay(500)
-            if (bounds.diagonalLengthInMeters() > 500_000) {
+            if (bounds.diagonalLengthInMeters > 500_000) {
                 // Too zoomed out — don't query
                 _error.value = "Zoom in to see restrictions"
                 _restrictions.value = emptyList()

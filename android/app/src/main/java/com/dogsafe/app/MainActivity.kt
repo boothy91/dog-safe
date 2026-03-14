@@ -91,7 +91,7 @@ class MainActivity : AppCompatActivity() {
             "Peak District"   to GeoPoint(53.4, -1.8),
             "Dartmoor"        to GeoPoint(50.6, -3.9),
             "Lake District"   to GeoPoint(54.5, -3.1),
-            "North York Moors"to GeoPoint(54.3, -0.9),
+            "North York Moors" to GeoPoint(54.3, -0.9),
             "Exmoor"          to GeoPoint(51.1, -3.6),
         )
         areas.forEach { (name, point) ->
