@@ -1,0 +1,6 @@
+-keep class com.dogsafe.app.model.** { *; }
+-keep class com.dogsafe.app.api.** { *; }
+-keepattributes Signature
+-keepattributes *Annotation*
+-dontwarn okhttp3.**
+-dontwarn retrofit2.**

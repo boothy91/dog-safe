@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.DogSafe" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">#2d5a27</item>
+        <item name="colorPrimaryVariant">#1a3d15</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorSecondary">#ef4444</item>
+        <item name="colorOnSecondary">#FFFFFF</item>
+        <item name="android:statusBarColor">#1a3d15</item>
+    </style>
+</resources>
