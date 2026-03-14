@@ -20,6 +20,8 @@ import com.dogsafe.app.model.RestrictionType
 import com.dogsafe.app.search.GeocodingClient
 import com.dogsafe.app.search.SearchResult
 import com.dogsafe.app.viewmodel.MapViewModel
+import com.dogsafe.app.wales.WalesAccessLand
+import com.dogsafe.app.wales.WalesPolygonOverlay
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import kotlinx.coroutines.launch
 import org.osmdroid.config.Configuration
@@ -56,6 +58,7 @@ class MainActivity : AppCompatActivity() {
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
         androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
             val bars = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
             view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
@@ -113,12 +116,14 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupAreaButtons() {
         val areas = listOf(
-            "Yorkshire Dales" to GeoPoint(54.1, -2.1),
-            "Peak District"   to GeoPoint(53.4, -1.8),
-            "Dartmoor"        to GeoPoint(50.6, -3.9),
-            "Lake District"   to GeoPoint(54.5, -3.1),
+            "Yorkshire Dales"  to GeoPoint(54.1, -2.1),
+            "Peak District"    to GeoPoint(53.4, -1.8),
+            "Dartmoor"         to GeoPoint(50.6, -3.9),
+            "Lake District"    to GeoPoint(54.5, -3.1),
             "North York Moors" to GeoPoint(54.3, -0.9),
-            "Exmoor"          to GeoPoint(51.1, -3.6),
+            "Exmoor"           to GeoPoint(51.1, -3.6),
+            "Brecon Beacons"   to GeoPoint(51.9, -3.4),
+            "Snowdonia"        to GeoPoint(53.1, -3.9),
         )
         areas.forEach { (name, point) ->
             val btn = com.google.android.material.chip.Chip(this).apply {
@@ -136,19 +141,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupSearch() {
-        // Search button click
         binding.searchButton.setOnClickListener { performSearch() }
-
-        // Keyboard search action
         binding.searchInput.setOnEditorActionListener { _, actionId, event ->
             if (actionId == EditorInfo.IME_ACTION_SEARCH ||
                 (event?.keyCode == KeyEvent.KEYCODE_ENTER)) {
-                performSearch()
-                true
+                performSearch(); true
             } else false
         }
-
-        // Search result tapped
         binding.searchResults.setOnItemClickListener { _, _, position, _ ->
             val result = searchResults.getOrNull(position) ?: return@setOnItemClickListener
             mapView.controller.animateTo(GeoPoint(result.lat, result.lon))
@@ -162,7 +161,6 @@ class MainActivity : AppCompatActivity() {
     private fun performSearch() {
         val query = binding.searchInput.text?.toString()?.trim() ?: return
         if (query.isEmpty()) return
-
         hideKeyboard()
         binding.progressBar.visibility = View.VISIBLE
 
@@ -176,12 +174,10 @@ class MainActivity : AppCompatActivity() {
                     binding.statusText.text = "No results found for \"$query\""
                     binding.searchResults.visibility = View.GONE
                 } else if (results.size == 1) {
-                    // Single result — go straight there
                     mapView.controller.animateTo(GeoPoint(results[0].lat, results[0].lon))
                     mapView.controller.setZoom(13.0)
                     binding.searchResults.visibility = View.GONE
                 } else {
-                    // Multiple results — show dropdown
                     val adapter = ArrayAdapter(
                         this@MainActivity,
                         R.layout.item_search_result,
@@ -202,20 +198,17 @@ class MainActivity : AppCompatActivity() {
             locationOverlay?.myLocation?.let { location ->
                 mapView.controller.animateTo(location)
                 mapView.controller.setZoom(13.0)
-            } ?: run {
-                // Permission not granted yet — request it
-                requestLocation()
-            }
+            } ?: requestLocation()
         }
     }
 
     private fun setupObservers() {
         viewModel.restrictions.observe(this) { restrictions ->
-            updateMap(restrictions)
-            binding.statusText.text = if (restrictions.isEmpty())
-                "✅ No dog restrictions in this area"
-            else
-                "🐕 ${restrictions.size} restriction${if (restrictions.size != 1) "s" else ""} found"
+            updateEnglandMap(restrictions)
+        }
+
+        viewModel.walesLand.observe(this) { land ->
+            updateWalesMap(land)
         }
 
         viewModel.loading.observe(this) { loading ->
@@ -225,15 +218,42 @@ class MainActivity : AppCompatActivity() {
         viewModel.error.observe(this) { error ->
             error?.let { binding.statusText.text = "⚠️ $it" }
         }
+
+        viewModel.countryInfo.observe(this) { info ->
+            // Update status with counts
+            val engCount  = viewModel.restrictions.value?.size ?: 0
+            val walesCount = viewModel.walesLand.value?.size ?: 0
+
+            binding.statusText.text = when {
+                info != null && engCount == 0 && walesCount > 0 ->
+                    "🏴󠁧󠁢󠁷󠁬󠁳󠁿 Wales: $walesCount access areas shown — no restriction data"
+                engCount > 0 && walesCount > 0 ->
+                    "🐕 $engCount restriction${if (engCount != 1) "s" else ""} · 🏴󠁧󠁢󠁷󠁬󠁳󠁿 $walesCount Wales areas"
+                engCount > 0 ->
+                    "🐕 $engCount restriction${if (engCount != 1) "s" else ""} found"
+                engCount == 0 && walesCount == 0 ->
+                    "✅ No dog restrictions in this area"
+                else -> info ?: "Searching..."
+            }
+        }
     }
 
-    private fun updateMap(restrictions: List<Restriction>) {
+    private fun updateEnglandMap(restrictions: List<Restriction>) {
         mapView.overlays.removeAll { it is RestrictionPolygonOverlay }
         restrictions.forEach { restriction ->
-            val overlay = RestrictionPolygonOverlay(restriction) { selected ->
+            mapView.overlays.add(RestrictionPolygonOverlay(restriction) { selected ->
                 showRestrictionDetail(selected)
-            }
-            mapView.overlays.add(overlay)
+            })
+        }
+        mapView.invalidate()
+    }
+
+    private fun updateWalesMap(land: List<WalesAccessLand>) {
+        mapView.overlays.removeAll { it is WalesPolygonOverlay }
+        land.forEach { accessLand ->
+            mapView.overlays.add(WalesPolygonOverlay(accessLand) { selected ->
+                showWalesDetail(selected)
+            })
         }
         mapView.invalidate()
     }
@@ -247,26 +267,36 @@ class MainActivity : AppCompatActivity() {
         binding.detailCase.text = restriction.caseNumber
         binding.detailStatus.text = if (restriction.isActive()) "ACTIVE" else "EXPIRED"
         binding.detailStatus.setTextColor(
-            if (restriction.isActive())
-                getColor(android.R.color.holo_green_dark)
-            else
-                getColor(android.R.color.holo_red_dark)
+            if (restriction.isActive()) getColor(android.R.color.holo_green_dark)
+            else getColor(android.R.color.holo_red_dark)
         )
         binding.detailStatus.setBackgroundResource(
             if (restriction.isActive()) R.drawable.badge_active else R.drawable.badge_expired
         )
         binding.viewPdfButton.setOnClickListener {
             restriction.pdfUrl()?.let { url ->
-                val intent = android.content.Intent(
-                    android.content.Intent.ACTION_VIEW,
-                    android.net.Uri.parse(url)
-                )
-                startActivity(intent)
+                startActivity(android.content.Intent(
+                    android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
             }
         }
         binding.viewPdfButton.visibility =
             if (restriction.pdfUrl() != null) View.VISIBLE else View.GONE
+        bottomSheet.state = BottomSheetBehavior.STATE_EXPANDED
+    }
 
+    private fun showWalesDetail(land: WalesAccessLand) {
+        binding.detailType.text = "🏴󠁧󠁢󠁷󠁬󠁳󠁿 Wales CROW Access Land"
+        binding.detailType.setTextColor(getColor(android.R.color.holo_green_dark))
+        binding.detailPurpose.text = land.layerType
+        binding.detailFrom.text = "${String.format("%.1f", land.areaHa)} hectares"
+        binding.detailUntil.text = "Permanent access"
+        binding.detailCase.text = "NRW #${land.objectId}"
+        binding.detailStatus.text = "OPEN ACCESS"
+        binding.detailStatus.setTextColor(getColor(android.R.color.holo_green_dark))
+        binding.detailStatus.setBackgroundResource(R.drawable.badge_active)
+        binding.viewPdfButton.visibility = View.GONE
+        // Show info about Wales restrictions
+        binding.detailPurpose.text = "${land.layerType}\n\n⚠️ No dog restriction data available for Wales. Check signs on the ground."
         bottomSheet.state = BottomSheetBehavior.STATE_EXPANDED
     }
 
@@ -304,13 +334,6 @@ class MainActivity : AppCompatActivity() {
         imm.hideSoftInputFromWindow(binding.searchInput.windowToken, 0)
     }
 
-    override fun onResume() {
-        super.onResume()
-        mapView.onResume()
-    }
-
-    override fun onPause() {
-        super.onPause()
-        mapView.onPause()
-    }
+    override fun onResume()  { super.onResume();  mapView.onResume()  }
+    override fun onPause()   { super.onPause();   mapView.onPause()   }
 }
