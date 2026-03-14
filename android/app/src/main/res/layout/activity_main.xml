@@ -90,6 +90,8 @@
                 app:boxStrokeColor="#2d5a27"
         app:boxBackgroundColor="#FFFFFF"
                 app:hintTextColor="#555555"
+        app:hintAnimationEnabled="false"
+        app:hintEnabled="false"
         app:placeholderTextColor="#555555"
         app:prefixTextColor="#555555"
                 
@@ -104,6 +106,7 @@
                     android:maxLines="1"
                     android:textColor="#000000"
                     android:textColorHint="#555555"
+                    android:hint="Postcode, place or area name"
                     android:textSize="14sp"
                     android:paddingStart="16dp"/>
             </com.google.android.material.textfield.TextInputLayout>
