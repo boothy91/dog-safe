@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#F5F0E8">
+
+    <!-- Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#CC1a3d15"
+        android:padding="12dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_marginEnd="10dp"
+            android:src="@mipmap/ic_launcher"
+            android:contentDescription="Dog Safe"/>
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="My Routes"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:textStyle="bold"/>
+
+        <ProgressBar
+            android:id="@+id/routesProgress"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:visibility="gone"
+            android:indeterminateTint="#FFFFFF"/>
+    </LinearLayout>
+
+    <!-- Season warning banner -->
+    <LinearLayout
+        android:id="@+id/seasonBanner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#FFF3CD"
+        android:padding="10dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:id="@+id/seasonBannerText"
+            android:text="🪶 1 Mar–31 Jul: Short lead required near ground-nesting birds on all CROW land"
+            android:textSize="12sp"
+            android:textColor="#856404"
+            android:fontFamily="sans-serif"/>
+    </LinearLayout>
+
+    <!-- Routes list -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/routesList"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:padding="8dp"
+        android:clipToPadding="false"/>
+
+    <!-- Empty state -->
+    <LinearLayout
+        android:id="@+id/emptyState"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🗺️"
+            android:textSize="48sp"
+            android:layout_marginBottom="12dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="No routes imported yet"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="#2c1810"
+            android:fontFamily="sans-serif"
+            android:layout_marginBottom="6dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Import a GPX file to check if your walk\nis safe for dogs"
+            android:textSize="13sp"
+            android:textColor="#666666"
+            android:fontFamily="sans-serif"
+            android:gravity="center"/>
+    </LinearLayout>
+
+    <!-- Import button -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/importButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        android:text="📂 Import GPX Route"
+        android:textColor="#FFFFFF"
+        android:textSize="15sp"
+        app:backgroundTint="#2d5a27"
+        app:cornerRadius="12dp"/>
+
+</LinearLayout>

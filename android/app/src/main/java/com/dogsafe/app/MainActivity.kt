@@ -1,343 +1,63 @@
 package com.dogsafe.app
 
-import android.Manifest
-import android.content.pm.PackageManager
 import android.os.Bundle
-import android.preference.PreferenceManager
-import android.view.KeyEvent
-import android.view.View
-import android.view.inputmethod.EditorInfo
-import android.view.inputmethod.InputMethodManager
-import android.widget.ArrayAdapter
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.lifecycleScope
-import com.dogsafe.app.databinding.ActivityMainBinding
-import com.dogsafe.app.model.Restriction
-import com.dogsafe.app.model.RestrictionType
-import com.dogsafe.app.search.GeocodingClient
-import com.dogsafe.app.search.SearchResult
-import com.dogsafe.app.viewmodel.MapViewModel
-import com.dogsafe.app.wales.WalesAccessLand
-import com.dogsafe.app.wales.WalesPolygonOverlay
-import com.google.android.material.bottomsheet.BottomSheetBehavior
-import kotlinx.coroutines.launch
-import org.osmdroid.config.Configuration
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
-import org.osmdroid.util.GeoPoint
-import org.osmdroid.views.MapView
-import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
-import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import com.dogsafe.app.db.RouteEntity
+import com.dogsafe.app.routes.RoutesFragment
+import com.google.android.material.bottomnavigation.BottomNavigationView
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var binding: ActivityMainBinding
-    private lateinit var viewModel: MapViewModel
-    private lateinit var mapView: MapView
-    private lateinit var bottomSheet: BottomSheetBehavior<View>
-    private var locationOverlay: MyLocationNewOverlay? = null
-    private var searchResults = mutableListOf<SearchResult>()
-
-    private val locationPermission = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
-            enableLocation()
-        }
-    }
+    private lateinit var bottomNav: BottomNavigationView
+    private var mapFragment: MapFragment? = null
+    private var routesFragment: RoutesFragment? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
 
-        Configuration.getInstance().apply {
-            load(this@MainActivity, PreferenceManager.getDefaultSharedPreferences(this@MainActivity))
-            userAgentValue = "DogSafe/1.0 (com.dogsafe.app)"
-        }
-
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
-
-        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
-            val bars = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
-            view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content)) { view, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            view.setPadding(bars.left, bars.top, bars.right, 0)
             insets
         }
 
-        viewModel = ViewModelProvider(this)[MapViewModel::class.java]
+        bottomNav = findViewById(R.id.bottomNav)
 
-        setupMap()
-        setupBottomSheet()
-        setupAreaButtons()
-        setupSearch()
-        setupLocationFab()
-        setupObservers()
-        requestLocation()
-    }
+        // Show map by default
+        showMap()
 
-    private fun setupMap() {
-        mapView = binding.map
-        mapView.setTileSource(TileSourceFactory.MAPNIK)
-        mapView.setMultiTouchControls(true)
-        mapView.controller.setZoom(11.0)
-        mapView.controller.setCenter(GeoPoint(54.1, -2.1))
-
-        mapView.addMapListener(object : org.osmdroid.events.MapListener {
-            override fun onScroll(event: org.osmdroid.events.ScrollEvent): Boolean {
-                viewModel.onMapMoved(mapView.boundingBox)
-                return false
-            }
-            override fun onZoom(event: org.osmdroid.events.ZoomEvent): Boolean {
-                viewModel.onMapMoved(mapView.boundingBox)
-                return false
-            }
-        })
-    }
-
-    private fun setupBottomSheet() {
-        bottomSheet = BottomSheetBehavior.from(binding.bottomSheet)
-        bottomSheet.state = BottomSheetBehavior.STATE_HIDDEN
-
-        binding.bottomSheetClose.setOnClickListener {
-            bottomSheet.state = BottomSheetBehavior.STATE_HIDDEN
-        }
-
-        bottomSheet.addBottomSheetCallback(object : BottomSheetBehavior.BottomSheetCallback() {
-            override fun onStateChanged(view: View, newState: Int) {
-                binding.legend.visibility = when (newState) {
-                    BottomSheetBehavior.STATE_HIDDEN -> View.VISIBLE
-                    else -> View.GONE
-                }
-                binding.locationFab.visibility = when (newState) {
-                    BottomSheetBehavior.STATE_HIDDEN -> View.VISIBLE
-                    else -> View.GONE
-                }
-            }
-            override fun onSlide(view: View, slideOffset: Float) {}
-        })
-    }
-
-    private fun setupAreaButtons() {
-        val areas = listOf(
-            "Yorkshire Dales"  to GeoPoint(54.1, -2.1),
-            "Peak District"    to GeoPoint(53.4, -1.8),
-            "Dartmoor"         to GeoPoint(50.6, -3.9),
-            "Lake District"    to GeoPoint(54.5, -3.1),
-            "North York Moors" to GeoPoint(54.3, -0.9),
-            "Exmoor"           to GeoPoint(51.1, -3.6),
-            "Brecon Beacons"   to GeoPoint(51.9, -3.4),
-            "Snowdonia"        to GeoPoint(53.1, -3.9),
-        )
-        areas.forEach { (name, point) ->
-            val btn = com.google.android.material.chip.Chip(this).apply {
-                text = name
-                isCheckable = true
-                setOnClickListener {
-                    mapView.controller.animateTo(point)
-                    mapView.controller.setZoom(11.0)
-                    hideKeyboard()
-                    binding.searchResults.visibility = View.GONE
-                }
-            }
-            binding.areaChipGroup.addView(btn)
-        }
-    }
-
-    private fun setupSearch() {
-        binding.searchButton.setOnClickListener { performSearch() }
-        binding.searchInput.setOnEditorActionListener { _, actionId, event ->
-            if (actionId == EditorInfo.IME_ACTION_SEARCH ||
-                (event?.keyCode == KeyEvent.KEYCODE_ENTER)) {
-                performSearch(); true
-            } else false
-        }
-        binding.searchResults.setOnItemClickListener { _, _, position, _ ->
-            val result = searchResults.getOrNull(position) ?: return@setOnItemClickListener
-            mapView.controller.animateTo(GeoPoint(result.lat, result.lon))
-            mapView.controller.setZoom(13.0)
-            binding.searchResults.visibility = View.GONE
-            binding.searchInput.setText(result.displayName)
-            hideKeyboard()
-        }
-    }
-
-    private fun performSearch() {
-        val query = binding.searchInput.text?.toString()?.trim() ?: return
-        if (query.isEmpty()) return
-        hideKeyboard()
-        binding.progressBar.visibility = View.VISIBLE
-
-        lifecycleScope.launch {
-            try {
-                val results = GeocodingClient.search(query)
-                searchResults.clear()
-                searchResults.addAll(results)
-
-                if (results.isEmpty()) {
-                    binding.statusText.text = "No results found for \"$query\""
-                    binding.searchResults.visibility = View.GONE
-                } else if (results.size == 1) {
-                    mapView.controller.animateTo(GeoPoint(results[0].lat, results[0].lon))
-                    mapView.controller.setZoom(13.0)
-                    binding.searchResults.visibility = View.GONE
-                } else {
-                    val adapter = ArrayAdapter(
-                        this@MainActivity,
-                        R.layout.item_search_result,
-                        results.map { it.displayName }
-                    )
-                    binding.searchResults.adapter = adapter
-                    binding.searchResults.visibility = View.VISIBLE
-                }
-            } catch (e: Exception) {
-                binding.statusText.text = "Search failed — check connection"
-            }
-            binding.progressBar.visibility = View.GONE
-        }
-    }
-
-    private fun setupLocationFab() {
-        binding.locationFab.setOnClickListener {
-            locationOverlay?.myLocation?.let { location ->
-                mapView.controller.animateTo(location)
-                mapView.controller.setZoom(13.0)
-            } ?: requestLocation()
-        }
-    }
-
-    private fun setupObservers() {
-        viewModel.restrictions.observe(this) { restrictions ->
-            updateEnglandMap(restrictions)
-        }
-
-        viewModel.walesLand.observe(this) { land ->
-            updateWalesMap(land)
-        }
-
-        viewModel.loading.observe(this) { loading ->
-            binding.progressBar.visibility = if (loading) View.VISIBLE else View.GONE
-        }
-
-        viewModel.error.observe(this) { error ->
-            error?.let { binding.statusText.text = "⚠️ $it" }
-        }
-
-        viewModel.countryInfo.observe(this) { info ->
-            // Update status with counts
-            val engCount  = viewModel.restrictions.value?.size ?: 0
-            val walesCount = viewModel.walesLand.value?.size ?: 0
-
-            binding.statusText.text = when {
-                info != null && engCount == 0 && walesCount > 0 ->
-                    "🏴󠁧󠁢󠁷󠁬󠁳󠁿 Wales: $walesCount access areas shown — no restriction data"
-                engCount > 0 && walesCount > 0 ->
-                    "🐕 $engCount restriction${if (engCount != 1) "s" else ""} · 🏴󠁧󠁢󠁷󠁬󠁳󠁿 $walesCount Wales areas"
-                engCount > 0 ->
-                    "🐕 $engCount restriction${if (engCount != 1) "s" else ""} found"
-                engCount == 0 && walesCount == 0 ->
-                    "✅ No dog restrictions in this area"
-                else -> info ?: "Searching..."
+        bottomNav.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_map    -> { showMap();    true }
+                R.id.nav_routes -> { showRoutes(); true }
+                else -> false
             }
         }
     }
 
-    private fun updateEnglandMap(restrictions: List<Restriction>) {
-        mapView.overlays.removeAll { it is RestrictionPolygonOverlay }
-        restrictions.forEach { restriction ->
-            mapView.overlays.add(RestrictionPolygonOverlay(restriction) { selected ->
-                showRestrictionDetail(selected)
-            })
-        }
-        mapView.invalidate()
+    private fun showMap() {
+        if (mapFragment == null) mapFragment = MapFragment()
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.fragmentContainer, mapFragment!!)
+            .commit()
     }
 
-    private fun updateWalesMap(land: List<WalesAccessLand>) {
-        mapView.overlays.removeAll { it is WalesPolygonOverlay }
-        land.forEach { accessLand ->
-            mapView.overlays.add(WalesPolygonOverlay(accessLand) { selected ->
-                showWalesDetail(selected)
-            })
-        }
-        mapView.invalidate()
+    private fun showRoutes() {
+        if (routesFragment == null) routesFragment = RoutesFragment()
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.fragmentContainer, routesFragment!!)
+            .commit()
     }
 
-    private fun showRestrictionDetail(restriction: Restriction) {
-        binding.detailType.text = RestrictionType.fromCode(restriction.type).label
-        binding.detailType.setTextColor(RestrictionType.fromCode(restriction.type).color(this))
-        binding.detailPurpose.text = restriction.purposeLabel()
-        binding.detailFrom.text = restriction.formattedStartDate()
-        binding.detailUntil.text = restriction.formattedEndDate()
-        binding.detailCase.text = restriction.caseNumber
-        binding.detailStatus.text = if (restriction.isActive()) "ACTIVE" else "EXPIRED"
-        binding.detailStatus.setTextColor(
-            if (restriction.isActive()) getColor(android.R.color.holo_green_dark)
-            else getColor(android.R.color.holo_red_dark)
-        )
-        binding.detailStatus.setBackgroundResource(
-            if (restriction.isActive()) R.drawable.badge_active else R.drawable.badge_expired
-        )
-        binding.viewPdfButton.setOnClickListener {
-            restriction.pdfUrl()?.let { url ->
-                startActivity(android.content.Intent(
-                    android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
-            }
-        }
-        binding.viewPdfButton.visibility =
-            if (restriction.pdfUrl() != null) View.VISIBLE else View.GONE
-        bottomSheet.state = BottomSheetBehavior.STATE_EXPANDED
+    fun showRouteOnMap(route: RouteEntity) {
+        // Switch to map tab and show route
+        bottomNav.selectedItemId = R.id.nav_map
+        showMap()
+        // Wait for fragment to be ready then show route
+        supportFragmentManager.executePendingTransactions()
+        mapFragment?.showRouteOnMap(route)
     }
-
-    private fun showWalesDetail(land: WalesAccessLand) {
-        binding.detailType.text = "🏴󠁧󠁢󠁷󠁬󠁳󠁿 Wales CROW Access Land"
-        binding.detailType.setTextColor(getColor(android.R.color.holo_green_dark))
-        binding.detailPurpose.text = land.layerType
-        binding.detailFrom.text = "${String.format("%.1f", land.areaHa)} hectares"
-        binding.detailUntil.text = "Permanent access"
-        binding.detailCase.text = "NRW #${land.objectId}"
-        binding.detailStatus.text = "OPEN ACCESS"
-        binding.detailStatus.setTextColor(getColor(android.R.color.holo_green_dark))
-        binding.detailStatus.setBackgroundResource(R.drawable.badge_active)
-        binding.viewPdfButton.visibility = View.GONE
-        // Show info about Wales restrictions
-        binding.detailPurpose.text = "${land.layerType}\n\n⚠️ No dog restriction data available for Wales. Check signs on the ground."
-        bottomSheet.state = BottomSheetBehavior.STATE_EXPANDED
-    }
-
-    private fun requestLocation() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-            == PackageManager.PERMISSION_GRANTED) {
-            enableLocation()
-        } else {
-            locationPermission.launch(arrayOf(
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ))
-        }
-    }
-
-    private fun enableLocation() {
-        locationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(this), mapView).apply {
-            enableMyLocation()
-            enableFollowLocation()
-        }
-        mapView.overlays.add(locationOverlay)
-        locationOverlay?.runOnFirstFix {
-            runOnUiThread {
-                locationOverlay?.myLocation?.let {
-                    mapView.controller.animateTo(it)
-                    mapView.controller.setZoom(12.0)
-                    locationOverlay?.disableFollowLocation()
-                }
-            }
-        }
-    }
-
-    private fun hideKeyboard() {
-        val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
-        imm.hideSoftInputFromWindow(binding.searchInput.windowToken, 0)
-    }
-
-    override fun onResume()  { super.onResume();  mapView.onResume()  }
-    override fun onPause()   { super.onPause();   mapView.onPause()   }
 }
