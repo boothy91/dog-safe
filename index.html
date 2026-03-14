@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dog Safe · CROW Restriction Checker</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #f5f0e8; font-family: Georgia, serif; color: #2c1810; }
+    button { cursor: pointer; transition: all 0.15s; }
+    a { color: inherit; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+
+const RESTRICTION_TYPES = {
+  "02": { label: "No Dogs", color: "#ef4444", bg: "#fef2f2" },
+  "04": { label: "No Dogs (except assistance dogs)", color: "#f97316", bg: "#fff7ed" },
+  "03": { label: "No Dogs (except guide/hearing dogs)", color: "#f97316", bg: "#fff7ed" },
+  "05": { label: "Dogs on Leads", color: "#eab308", bg: "#fefce8" },
+  "09": { label: "Dogs on Fenced Routes Only", color: "#eab308", bg: "#fefce8" },
+  "10": { label: "Marked Routes, Dogs on Leads", color: "#eab308", bg: "#fefce8" },
+};
+
+const PURPOSE_LABELS = {
+  "16": "🪶 Grouse disturbance",
+  "17": "🐑 Lambing",
+  "14": "🦎 Sensitive wildlife",
+  "03": "🐄 Livestock disturbance",
+  "05": "🔥 Fire prevention",
+  "01": "⚠️ Public safety",
+  "07": "🌿 Land management",
+};
+
+const LOCATIONS = [
+  { name: "Yorkshire Dales", lat: 54.1, lng: -2.1 },
+  { name: "Peak District",   lat: 53.4, lng: -1.8 },
+  { name: "Dartmoor",        lat: 50.6, lng: -3.9 },
+  { name: "Lake District",   lat: 54.5, lng: -3.1 },
+  { name: "North York Moors",lat: 54.3, lng: -0.9 },
+  { name: "Exmoor",          lat: 51.1, lng: -3.6 },
+];
+
+function App() {
+  const [restrictions, setRestrictions] = React.useState([]);
+  const [loading, setLoading]           = React.useState(false);
+  const [selected, setSelected]         = React.useState(null);
+  const [mapCenter, setMapCenter]       = React.useState(LOCATIONS[0]);
+  const [activeOnly, setActiveOnly]     = React.useState(true);
+  const [stats, setStats]               = React.useState(null);
+  const [error, setError]               = React.useState(null);
+
+  const fetchRestrictions = React.useCallback(async (lat, lng) => {
+    setLoading(true); setError(null); setSelected(null);
+    try {
+      const r = 0.3;
+      const box = `${lng-r},${lat-r*0.6},${lng+r},${lat+r*0.6}`;
+      const dateFilter = activeOnly
+        ? `+AND+END_DATE>=CURRENT_TIMESTAMP+AND+START_DATE<=CURRENT_TIMESTAMP`
+        : "";
+      const types = "(TYPE%3D'02'+OR+TYPE%3D'04'+OR+TYPE%3D'03'+OR+TYPE%3D'05'+OR+TYPE%3D'09'+OR+TYPE%3D'10')";
+      const url = `https://services.arcgis.com/JJzESW51TqeY9uat/arcgis/rest/services/OASYS_RESTRICTION_PRD_VIEW/FeatureServer/0/query`
+        + `?geometry=${box}&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects`
+        + `&where=${types}${dateFilter}`
+        + `&outFields=CASE_NUMBER,TYPE,PURPOSE,START_DATE,END_DATE,VIEW_MAP`
+        + `&outSR=4326&returnGeometry=false&f=json`;
+
+      const res  = await fetch(url);
+      const data = await res.json();
+
+      if (data.features) {
+        const seen = new Map();
+        data.features.forEach(f => {
+          const cn = f.attributes.CASE_NUMBER;
+          if (!seen.has(cn) || f.attributes.END_DATE > seen.get(cn).attributes.END_DATE)
+            seen.set(cn, f);
+        });
+        const unique = Array.from(seen.values());
+        setRestrictions(unique);
+        const tc = {};
+        unique.forEach(f => { tc[f.attributes.TYPE] = (tc[f.attributes.TYPE]||0)+1; });
+        setStats({ total: unique.length, typeCounts: tc });
+      }
+    } catch(e) { setError("Could not load data. Please check your connection."); }
+    setLoading(false);
+  }, [activeOnly]);
+
+  React.useEffect(() => {
+    fetchRestrictions(mapCenter.lat, mapCenter.lng);
+  }, [mapCenter, activeOnly]);
+
+  const formatDate = ts => ts
+    ? new Date(ts).toLocaleDateString("en-GB", { day:"numeric", month:"short", year:"numeric" })
+    : "Unknown";
+
+  const extractPdf = vm => { const m = vm && vm.match(/href="([^"]+)"/); return m ? m[1] : null; };
+  const isActive   = r  => { const n = Date.now(); return r.attributes.START_DATE<=n && r.attributes.END_DATE>=n; };
+
+  return (
+    <div style={{ minHeight:"100vh" }}>
+
+      {/* Header */}
+      <div style={{ background:"linear-gradient(135deg,#2d5a27,#1a3d15)", color:"white", padding:"20px 24px", boxShadow:"0 4px 20px rgba(0,0,0,0.3)" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>
+          <span style={{ fontSize:"36px" }}>🐕</span>
+          <div>
+            <h1 style={{ fontSize:"24px", fontWeight:"bold", letterSpacing:"-0.5px" }}>Dog Safe</h1>
+            <p style={{ fontSize:"12px", opacity:0.8, fontFamily:"sans-serif", marginTop:"2px" }}>
+              Live CROW Act dog restrictions · England
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Area Selector */}
+      <div style={{ background:"#fff", borderBottom:"1px solid #ddd", padding:"12px 16px" }}>
+        <p style={{ fontSize:"10px", fontFamily:"sans-serif", color:"#999", textTransform:"uppercase", letterSpacing:"1px", marginBottom:"8px" }}>
+          Select area
+        </p>
+        <div style={{ display:"flex", gap:"8px", flexWrap:"wrap" }}>
+          {LOCATIONS.map(loc => {
+            const on = mapCenter.name === loc.name;
+            return (
+              <button key={loc.name} onClick={() => setMapCenter(loc)} style={{
+                padding:"7px 14px", borderRadius:"20px",
+                border:`2px solid ${on?"#2d5a27":"#ddd"}`,
+                background: on?"#2d5a27":"white",
+                color: on?"white":"#555",
+                fontSize:"13px", fontFamily:"sans-serif", fontWeight: on?"bold":"normal"
+              }}>{loc.name}</button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Filter */}
+      <div style={{ background:"#fff8f0", borderBottom:"1px solid #e8d5b0", padding:"10px 16px", display:"flex", alignItems:"center", flexWrap:"wrap", gap:"12px" }}>
+        <label style={{ display:"flex", alignItems:"center", gap:"8px", fontFamily:"sans-serif", fontSize:"13px", cursor:"pointer" }}>
+          <input type="checkbox" checked={activeOnly} onChange={e => setActiveOnly(e.target.checked)}
+            style={{ width:"16px", height:"16px", accentColor:"#2d5a27" }} />
+          Active restrictions only
+        </label>
+        <span style={{ marginLeft:"auto", fontFamily:"sans-serif", fontSize:"12px", color:"#888" }}>
+          {loading ? "⏳ Loading..." : stats ? `${stats.total} found` : ""}
+        </span>
+      </div>
+
+      {/* Summary Bar */}
+      {!loading && stats && stats.total > 0 && (
+        <div style={{ background:"#2d5a27", color:"white", padding:"8px 16px", display:"flex", gap:"16px", flexWrap:"wrap", fontFamily:"sans-serif", fontSize:"12px" }}>
+          {Object.entries(stats.typeCounts).map(([type, count]) => (
+            <span key={type} style={{ display:"flex", alignItems:"center", gap:"5px" }}>
+              <span style={{ width:"8px", height:"8px", borderRadius:"50%", background: RESTRICTION_TYPES[type]?.color||"#999", display:"inline-block" }} />
+              {RESTRICTION_TYPES[type]?.label||type}: {count}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Results */}
+      <div style={{ padding:"16px", maxWidth:"600px", margin:"0 auto" }}>
+
+        {error && (
+          <div style={{ background:"#fef2f2", border:"2px solid #fca5a5", borderRadius:"10px", padding:"20px", textAlign:"center", fontFamily:"sans-serif", color:"#991b1b" }}>
+            ⚠️ {error}
+          </div>
+        )}
+
+        {loading && (
+          <div style={{ textAlign:"center", padding:"56px", fontFamily:"sans-serif", color:"#666" }}>
+            <div style={{ fontSize:"44px", marginBottom:"12px" }}>🔍</div>
+            Querying Natural England database...
+          </div>
+        )}
+
+        {!loading && !error && restrictions.length === 0 && (
+          <div style={{ textAlign:"center", padding:"40px", background:"#f0fdf4", borderRadius:"12px", border:"2px solid #86efac" }}>
+            <div style={{ fontSize:"52px", marginBottom:"10px" }}>✅</div>
+            <h3 style={{ color:"#166534", fontFamily:"sans-serif", marginBottom:"6px" }}>No dog restrictions here</h3>
+            <p style={{ color:"#166534", fontFamily:"sans-serif", fontSize:"13px" }}>
+              Dogs are welcome on CROW access land in this area{activeOnly?" right now":""}.
+            </p>
+            <p style={{ color:"#6b7280", fontFamily:"sans-serif", fontSize:"11px", marginTop:"10px", lineHeight:"1.6" }}>
+              Always keep dogs on a lead near livestock.<br/>
+              Short lead required 1 Mar – 31 Jul near ground-nesting birds.
+            </p>
+          </div>
+        )}
+
+        {!loading && restrictions.map((r, i) => {
+          const rt     = RESTRICTION_TYPES[r.attributes.TYPE];
+          const active = isActive(r);
+          const pdfUrl = extractPdf(r.attributes.VIEW_MAP);
+          const purpose= PURPOSE_LABELS[r.attributes.PURPOSE];
+          const isOpen = selected?.attributes.CASE_NUMBER === r.attributes.CASE_NUMBER;
+
+          return (
+            <div key={r.attributes.CASE_NUMBER+i}
+              onClick={() => setSelected(isOpen ? null : r)}
+              style={{
+                background:"white", borderRadius:"10px",
+                border:`2px solid ${isOpen ? rt?.color||"#ccc" : "#e8d5b0"}`,
+                marginBottom:"10px", overflow:"hidden", cursor:"pointer",
+                boxShadow: isOpen ? `0 4px 16px ${rt?.color}33` : "0 2px 8px rgba(0,0,0,0.06)",
+                transition:"all 0.2s"
+              }}>
+
+              {/* Row */}
+              <div style={{ padding:"13px 14px", display:"flex", alignItems:"center", gap:"12px" }}>
+                <div style={{ width:"12px", height:"12px", borderRadius:"50%", background:rt?.color||"#999", flexShrink:0, boxShadow:`0 0 0 3px ${rt?.bg||"#f5f5f5"}` }} />
+                <div style={{ flex:1 }}>
+                  <div style={{ fontWeight:"bold", fontSize:"14px", fontFamily:"sans-serif" }}>
+                    {rt?.label || r.attributes.TYPE}
+                  </div>
+                  {purpose && <div style={{ fontSize:"12px", color:"#777", fontFamily:"sans-serif", marginTop:"2px" }}>{purpose}</div>}
+                </div>
+                <div>
+                  <span style={{
+                    fontSize:"10px", fontFamily:"sans-serif", padding:"3px 8px", borderRadius:"10px",
+                    background: active?"#dcfce7":"#fee2e2",
+                    color: active?"#166534":"#991b1b", fontWeight:"bold"
+                  }}>
+                    {active?"ACTIVE":"EXPIRED"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Expanded */}
+              {isOpen && (
+                <div style={{ borderTop:`2px solid ${rt?.bg||"#f5f5f5"}`, padding:"14px", background:rt?.bg||"#fafafa", fontFamily:"sans-serif" }}>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"10px", marginBottom:"12px" }}>
+                    {[
+                      ["Case Number", r.attributes.CASE_NUMBER],
+                      ["Type", rt?.label || r.attributes.TYPE],
+                      ["From", formatDate(r.attributes.START_DATE)],
+                      ["Until", formatDate(r.attributes.END_DATE)],
+                    ].map(([label, val]) => (
+                      <div key={label}>
+                        <div style={{ fontSize:"10px", color:"#888", textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:"2px" }}>{label}</div>
+                        <div style={{ fontSize:"13px", fontWeight:"bold" }}>{val}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {pdfUrl && (
+                    <a href={pdfUrl} target="_blank" rel="noopener noreferrer"
+                      onClick={e => e.stopPropagation()}
+                      style={{
+                        display:"block", textAlign:"center", padding:"11px",
+                        background:"#2d5a27", color:"white", borderRadius:"8px",
+                        textDecoration:"none", fontSize:"13px", fontWeight:"bold", fontFamily:"sans-serif"
+                      }}>
+                      📄 View Official Restriction Map (PDF)
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* Footer */}
+        <div style={{ marginTop:"16px", padding:"12px", background:"#fff8f0", borderRadius:"8px", border:"1px solid #e8d5b0", fontFamily:"sans-serif", fontSize:"11px", color:"#666", lineHeight:"1.6" }}>
+          <strong>Data:</strong> Natural England · CROW Act 2000 Restrictions · Live API<br/>
+          <strong>Note:</strong> Dogs must be on a short lead (max 2m) near livestock at all times, and 1 Mar–31 Jul near ground-nesting birds.<br/>
+          <strong>Source:</strong> <a href="https://www.gov.uk/right-of-way-open-access-land/use-your-right-to-roam" target="_blank" style={{ color:"#2d5a27" }}>Natural England Open Access</a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
