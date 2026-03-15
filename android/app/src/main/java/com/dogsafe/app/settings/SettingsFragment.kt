@@ -33,14 +33,14 @@ class SettingsFragment : Fragment() {
         }
 
         val spinnerMapStyle = view.findViewById<Spinner>(R.id.spinnerMapStyle)
-        val mapStyles = listOf("Standard", "Topo (hills & contours)", "Satellite")
+        val mapStyles = listOf("Standard", "Topo (hills & contours)")
         val mapStyleAdapter = ArrayAdapter(ctx, R.layout.item_spinner, mapStyles)
         mapStyleAdapter.setDropDownViewResource(R.layout.item_spinner)
         spinnerMapStyle.adapter = mapStyleAdapter
-        spinnerMapStyle.setSelection(when (AppSettings.getMapStyle(ctx)) { "topo" -> 1; "satellite" -> 2; else -> 0 })
+        spinnerMapStyle.setSelection(if (AppSettings.getMapStyle(ctx) == "topo") 1 else 0)
         spinnerMapStyle.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: android.widget.AdapterView<*>, v: View?, pos: Int, id: Long) {
-                AppSettings.setMapStyle(ctx, when (pos) { 1 -> "topo"; 2 -> "satellite"; else -> "standard" })
+                AppSettings.setMapStyle(ctx, if (pos == 1) "topo" else "standard")
             }
             override fun onNothingSelected(parent: android.widget.AdapterView<*>) {}
         }
@@ -69,19 +69,6 @@ class SettingsFragment : Fragment() {
         switchAutoAnalyse.isChecked = AppSettings.getAutoAnalyse(ctx)
         switchAutoAnalyse.setOnCheckedChangeListener { _, checked ->
             AppSettings.setAutoAnalyse(ctx, checked)
-        }
-
-        val spinnerDistanceUnits = view.findViewById<Spinner>(R.id.spinnerDistanceUnits)
-        val units = listOf("Kilometres (km)", "Miles")
-        val unitsAdapter = ArrayAdapter(ctx, R.layout.item_spinner, units)
-        unitsAdapter.setDropDownViewResource(R.layout.item_spinner)
-        spinnerDistanceUnits.adapter = unitsAdapter
-        spinnerDistanceUnits.setSelection(if (AppSettings.getDistanceUnits(ctx) == "miles") 1 else 0)
-        spinnerDistanceUnits.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: android.widget.AdapterView<*>, v: View?, pos: Int, id: Long) {
-                AppSettings.setDistanceUnits(ctx, if (pos == 1) "miles" else "km")
-            }
-            override fun onNothingSelected(parent: android.widget.AdapterView<*>) {}
         }
 
         // --- About ---

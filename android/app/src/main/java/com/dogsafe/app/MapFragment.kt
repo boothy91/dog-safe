@@ -429,6 +429,18 @@ class MapFragment : Fragment() {
     private fun enableLocation() {
         locationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(requireContext()), mapView).apply {
             enableMyLocation()
+            // Blue circle instead of default person icon
+            val size = 32
+            val bmp = android.graphics.Bitmap.createBitmap(size, size, android.graphics.Bitmap.Config.ARGB_8888)
+            val canvas = android.graphics.Canvas(bmp)
+            val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+            paint.color = android.graphics.Color.parseColor("#2979FF")
+            canvas.drawCircle(size/2f, size/2f, size/2f - 2, paint)
+            paint.color = android.graphics.Color.WHITE
+            paint.style = android.graphics.Paint.Style.STROKE
+            paint.strokeWidth = 3f
+            canvas.drawCircle(size/2f, size/2f, size/2f - 2, paint)
+            setPersonIcon(bmp)
         }
         mapView.overlays.add(locationOverlay)
     }
