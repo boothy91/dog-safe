@@ -32,7 +32,7 @@ class MainActivity : AppCompatActivity() {
 
         bottomNav.setOnItemSelectedListener { item ->
             when (item.itemId) {
-                R.id.nav_map      -> { showMap();      true }
+                R.id.nav_map      -> { showMap(); mapFragment?.refreshSettings(); true }
                 R.id.nav_routes   -> { showRoutes();   true }
                 R.id.nav_settings -> { showSettings(); true }
                 else -> false

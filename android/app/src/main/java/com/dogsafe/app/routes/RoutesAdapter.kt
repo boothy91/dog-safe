@@ -7,6 +7,7 @@ import android.widget.ImageButton
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.dogsafe.app.R
+import com.dogsafe.app.settings.AppSettings
 import com.dogsafe.app.db.RouteEntity
 
 class RoutesAdapter(
@@ -35,7 +36,7 @@ class RoutesAdapter(
         val route = routes[position]
 
         holder.routeName.text = route.name
-        holder.routeDistance.text = String.format("%.1fkm", route.distanceKm)
+        holder.routeDistance.text = AppSettings.formatDistance(holder.itemView.context, route.distanceKm)
         holder.routeRestrictions.text = "${route.restrictionCount} restriction${if (route.restrictionCount != 1) "s" else ""}"
 
         // Visibility dot — green = visible, red = hidden

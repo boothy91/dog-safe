@@ -17,6 +17,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.dogsafe.app.R
 import com.dogsafe.app.routes.RouteAnalyser.isNestingBirdSeason
 import com.google.android.material.button.MaterialButton
+import com.dogsafe.app.settings.AppSettings
 import com.google.android.material.snackbar.Snackbar
 
 class RoutesFragment : Fragment() {
@@ -55,7 +56,7 @@ class RoutesFragment : Fragment() {
         seasonBanner = view.findViewById(R.id.seasonBanner)
 
         // Show season banner if applicable
-        if (isNestingBirdSeason()) seasonBanner.visibility = View.VISIBLE
+        if (isNestingBirdSeason() && AppSettings.getSeasonBanner(requireContext())) seasonBanner.visibility = View.VISIBLE
 
         // Setup RecyclerView
         adapter = RoutesAdapter(
@@ -98,13 +99,19 @@ class RoutesFragment : Fragment() {
         viewModel.loadRoutes(requireContext())
     }
 
-
     private fun openFilePicker() {
-        val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
-            type = "*/*"
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf(
+                "application/gpx+xml",
+                "application/octet-stream",
+                "text/xml",
+                "text/plain",
+                "*/*"
+            ))
         }
-        filePicker.launch(Intent.createChooser(intent, "Select GPX file"))
+        filePicker.launch(intent)
     }
 
     private fun confirmDelete(route: com.dogsafe.app.db.RouteEntity) {

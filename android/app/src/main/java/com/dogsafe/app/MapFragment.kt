@@ -25,6 +25,7 @@ import com.dogsafe.app.model.RestrictionType
 import com.dogsafe.app.routes.GpxParser
 import com.dogsafe.app.search.GeocodingClient
 import com.dogsafe.app.search.SearchResult
+import com.dogsafe.app.settings.AppSettings
 import com.dogsafe.app.viewmodel.MapViewModel
 import com.dogsafe.app.wales.WalesAccessLand
 import com.dogsafe.app.wales.WalesPolygonOverlay
@@ -36,7 +37,6 @@ import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import com.dogsafe.app.settings.AppSettings
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
@@ -61,7 +61,6 @@ class MapFragment : Fragment() {
 
     private var locationOverlay: MyLocationNewOverlay? = null
     private var searchResults = mutableListOf<SearchResult>()
-    private var routePolylines = mutableListOf<Polyline>()
 
     private val locationPermission = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -82,8 +81,7 @@ class MapFragment : Fragment() {
             userAgentValue = "DogSafe/1.0 (com.dogsafe.app)"
         }
 
-        viewModel = ViewModelProvider(requireActivity())[MapViewModel::class.java]
-
+        viewModel       = ViewModelProvider(requireActivity())[MapViewModel::class.java]
         statusText      = view.findViewById(R.id.statusText)
         progressBar     = view.findViewById(R.id.progressBar)
         legend          = view.findViewById(R.id.legend)
@@ -103,22 +101,58 @@ class MapFragment : Fragment() {
 
     private fun setupMap(view: View) {
         mapView = view.findViewById(R.id.map)
-        mapView.setTileSource(TileSourceFactory.MAPNIK)
         mapView.setMultiTouchControls(true)
-        val lastLat = AppSettings.getLastLat(requireContext())
-        val lastLon = AppSettings.getLastLon(requireContext())
-        val lastZoom = AppSettings.getLastZoom(requireContext())
-        mapView.controller.setCenter(GeoPoint(lastLat, lastLon))
-        mapView.controller.setZoom(lastZoom)
+
+        // Apply map style from settings
+        applyMapStyle()
+
+        // Restore last position or default
+        val ctx  = requireContext()
+        val lat  = AppSettings.getLastLat(ctx)
+        val lon  = AppSettings.getLastLon(ctx)
+        val zoom = AppSettings.getLastZoom(ctx)
+        mapView.controller.setCenter(GeoPoint(lat, lon))
+        mapView.controller.setZoom(zoom)
 
         mapView.addMapListener(object : org.osmdroid.events.MapListener {
             override fun onScroll(event: org.osmdroid.events.ScrollEvent): Boolean {
-                viewModel.onMapMoved(mapView.boundingBox); return false
+                savePosition()
+                viewModel.onMapMoved(mapView.boundingBox)
+                return false
             }
             override fun onZoom(event: org.osmdroid.events.ZoomEvent): Boolean {
-                viewModel.onMapMoved(mapView.boundingBox); return false
+                savePosition()
+                viewModel.onMapMoved(mapView.boundingBox)
+                return false
             }
         })
+    }
+
+    private fun applyMapStyle() {
+        val style = AppSettings.getMapStyle(requireContext())
+        mapView.setTileSource(
+            if (style == "cycle") TileSourceFactory.CYCLEMAP
+            else TileSourceFactory.MAPNIK
+        )
+    }
+
+    fun refreshSettings() {
+        if (::mapView.isInitialized) {
+            applyMapStyle()
+            viewModel.onMapMoved(mapView.boundingBox)
+        }
+    }
+
+    private fun savePosition() {
+        if (::mapView.isInitialized && AppSettings.getRememberPosition(requireContext())) {
+            val center = mapView.mapCenter
+            AppSettings.saveLastPosition(
+                requireContext(),
+                center.latitude,
+                center.longitude,
+                mapView.zoomLevelDouble
+            )
+        }
     }
 
     private fun setupBottomSheet(view: View) {
@@ -157,6 +191,7 @@ class MapFragment : Fragment() {
                 isCheckable = true
                 setOnClickListener {
                     mapView.controller.animateTo(point)
+                    mapView.controller.setZoom(11.0)
                     hideKeyboard()
                     searchResultsList.visibility = View.GONE
                 }
@@ -225,7 +260,7 @@ class MapFragment : Fragment() {
 
     private fun setupObservers() {
         viewModel.restrictions.observe(viewLifecycleOwner) { updateEnglandMap(it) }
-        viewModel.walesLand.observe(viewLifecycleOwner) { updateWalesMap(it) }
+        viewModel.walesLand.observe(viewLifecycleOwner)    { updateWalesMap(it)   }
         viewModel.loading.observe(viewLifecycleOwner) { loading ->
             progressBar.visibility = if (loading) View.VISIBLE else View.GONE
         }
@@ -234,12 +269,12 @@ class MapFragment : Fragment() {
         }
         viewModel.countryInfo.observe(viewLifecycleOwner) {
             val engCount   = viewModel.restrictions.value?.size ?: 0
-            val walesCount = viewModel.walesLand.value?.size ?: 0
+            val walesCount = viewModel.walesLand.value?.size    ?: 0
             statusText.text = when {
                 engCount > 0 && walesCount > 0 -> "🐕 $engCount restrictions · 🏴󠁧󠁢󠁷󠁬󠁳󠁿 $walesCount Wales areas"
-                engCount > 0  -> "🐕 $engCount restriction${if (engCount != 1) "s" else ""} found"
+                engCount > 0   -> "🐕 $engCount restriction${if (engCount != 1) "s" else ""} found"
                 walesCount > 0 -> "🏴󠁧󠁢󠁷󠁬󠁳󠁿 Wales: $walesCount access areas — no restriction data"
-                else -> "✅ No dog restrictions in this area"
+                else           -> "✅ No dog restrictions in this area"
             }
         }
     }
@@ -269,13 +304,10 @@ class MapFragment : Fragment() {
                     GpxParser.parse(gpxFile.inputStream(), route.name).points
                 } catch (e: Exception) { emptyList() }
             }
-
             if (points.isEmpty()) return@launch
 
-            // Remove existing route polylines
-            mapView.overlays.removeAll { it is Polyline && (it.title?.startsWith("route_") == true) }
+            mapView.overlays.removeAll { it is Polyline && it.title?.startsWith("route_") == true }
 
-            // Draw route
             val polyline = Polyline().apply {
                 title = "route_${route.id}"
                 setPoints(points.map { GeoPoint(it.lat, it.lon) })
@@ -288,28 +320,26 @@ class MapFragment : Fragment() {
             }
             mapView.overlays.add(polyline)
 
-            // Zoom to route
             val minLat = points.minOf { it.lat }
             val maxLat = points.maxOf { it.lat }
             val minLon = points.minOf { it.lon }
             val maxLon = points.maxOf { it.lon }
-            val center = GeoPoint((minLat + maxLat) / 2, (minLon + maxLon) / 2)
-            mapView.controller.animateTo(center)
+            mapView.controller.animateTo(GeoPoint((minLat + maxLat) / 2, (minLon + maxLon) / 2))
             mapView.controller.setZoom(12.0)
             mapView.invalidate()
         }
     }
 
     private fun showRestrictionDetail(restriction: Restriction) {
-        val v = view ?: return
+        val v  = view ?: return
         val rt = RestrictionType.fromCode(restriction.type)
         v.findViewById<TextView>(R.id.detailType).apply {
             text = rt.label; setTextColor(rt.color(requireContext()))
         }
-        v.findViewById<TextView>(R.id.detailPurpose).text  = restriction.purposeLabel()
-        v.findViewById<TextView>(R.id.detailFrom).text     = restriction.formattedStartDate()
-        v.findViewById<TextView>(R.id.detailUntil).text    = restriction.formattedEndDate()
-        v.findViewById<TextView>(R.id.detailCase).text     = restriction.caseNumber
+        v.findViewById<TextView>(R.id.detailPurpose).text = restriction.purposeLabel()
+        v.findViewById<TextView>(R.id.detailFrom).text    = restriction.formattedStartDate()
+        v.findViewById<TextView>(R.id.detailUntil).text   = restriction.formattedEndDate()
+        v.findViewById<TextView>(R.id.detailCase).text    = restriction.caseNumber
         val active = restriction.isActive()
         v.findViewById<TextView>(R.id.detailStatus).apply {
             text = if (active) "ACTIVE" else "EXPIRED"
@@ -337,9 +367,9 @@ class MapFragment : Fragment() {
         }
         v.findViewById<TextView>(R.id.detailPurpose).text =
             "${land.layerType}\n\n⚠️ No dog restriction data available for Wales."
-        v.findViewById<TextView>(R.id.detailFrom).text   = "${String.format("%.1f", land.areaHa)} ha"
-        v.findViewById<TextView>(R.id.detailUntil).text  = "Permanent access"
-        v.findViewById<TextView>(R.id.detailCase).text   = "NRW #${land.objectId}"
+        v.findViewById<TextView>(R.id.detailFrom).text  = "${String.format("%.1f", land.areaHa)} ha"
+        v.findViewById<TextView>(R.id.detailUntil).text = "Permanent access"
+        v.findViewById<TextView>(R.id.detailCase).text  = "NRW #${land.objectId}"
         v.findViewById<TextView>(R.id.detailStatus).apply {
             text = "OPEN ACCESS"
             setTextColor(requireContext().getColor(android.R.color.holo_green_dark))
@@ -360,18 +390,10 @@ class MapFragment : Fragment() {
 
     private fun enableLocation() {
         locationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(requireContext()), mapView).apply {
-            enableMyLocation(); enableFollowLocation()
+            enableMyLocation()
+            // No follow location — only moves on FAB tap
         }
         mapView.overlays.add(locationOverlay)
-        locationOverlay?.runOnFirstFix {
-            activity?.runOnUiThread {
-                locationOverlay?.myLocation?.let {
-                    mapView.controller.animateTo(it)
-                    mapView.controller.setZoom(12.0)
-                    locationOverlay?.disableFollowLocation()
-                }
-            }
-        }
     }
 
     private fun hideKeyboard() {
@@ -380,13 +402,20 @@ class MapFragment : Fragment() {
         imm.hideSoftInputFromWindow(searchInput.windowToken, 0)
     }
 
-    override fun onResume()  { super.onResume();  if (::mapView.isInitialized) mapView.onResume()  }
-    override fun onPause()   { super.onPause();   if (::mapView.isInitialized) mapView.onPause()   }
-
-    fun savePosition(context: android.content.Context) {
+    override fun onResume() {
+        super.onResume()
         if (::mapView.isInitialized) {
-            val center = mapView.mapCenter
-            AppSettings.saveLastPosition(context, center.latitude, center.longitude, mapView.zoomLevelDouble)
+            mapView.onResume()
+            applyMapStyle() // Re-apply in case settings changed
+            viewModel.onMapMoved(mapView.boundingBox) // Re-fetch with latest settings
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        if (::mapView.isInitialized) {
+            savePosition()
+            mapView.onPause()
         }
     }
 }

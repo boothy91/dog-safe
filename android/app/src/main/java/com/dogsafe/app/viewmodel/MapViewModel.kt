@@ -1,11 +1,13 @@
 package com.dogsafe.app.viewmodel
 
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dogsafe.app.api.ApiClient
 import com.dogsafe.app.model.Restriction
+import com.dogsafe.app.settings.AppSettings
 import com.dogsafe.app.wales.WalesAccessLand
 import com.dogsafe.app.wales.WalesApiClient
 import kotlinx.coroutines.Job
@@ -13,7 +15,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.osmdroid.util.BoundingBox
 
-class MapViewModel : ViewModel() {
+class MapViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val ctx get() = getApplication<Application>().applicationContext
 
     private val _restrictions = MutableLiveData<List<Restriction>>()
     val restrictions: LiveData<List<Restriction>> = _restrictions
@@ -30,7 +34,6 @@ class MapViewModel : ViewModel() {
     private val _countryInfo = MutableLiveData<String?>()
     val countryInfo: LiveData<String?> = _countryInfo
 
-    var activeOnly = true
     private var fetchJob: Job? = null
 
     fun onMapMoved(bounds: BoundingBox) {
@@ -47,22 +50,20 @@ class MapViewModel : ViewModel() {
 
             val inEngland = WalesApiClient.isInEngland(
                 bounds.latSouth, bounds.latNorth, bounds.lonWest, bounds.lonEast)
-            val inWales = WalesApiClient.isInWales(
+            val inWales   = WalesApiClient.isInWales(
                 bounds.latSouth, bounds.latNorth, bounds.lonWest, bounds.lonEast)
+            val showWales = AppSettings.getShowWales(ctx)
 
-            // Fetch England restrictions
             if (inEngland) fetchEnglandRestrictions(bounds)
             else _restrictions.value = emptyList()
 
-            // Fetch Wales access land
-            if (inWales) fetchWalesLand(bounds)
+            if (inWales && showWales) fetchWalesLand(bounds)
             else _walesLand.value = emptyList()
 
-            // Set country info message
             _countryInfo.value = when {
-                inWales && !inEngland -> "Wales: Access land shown. No restriction data available."
-                inWales && inEngland  -> "Showing England restrictions and Wales access land."
-                !inEngland && !inWales -> "No CROW access land data for this area."
+                inWales && !inEngland && showWales -> "Wales: Access land shown. No restriction data available."
+                inWales && inEngland  -> null
+                !inEngland && !inWales -> null
                 else -> null
             }
         }
@@ -70,17 +71,14 @@ class MapViewModel : ViewModel() {
 
     private suspend fun fetchEnglandRestrictions(bounds: BoundingBox) {
         _loading.value = true
-        _error.value = null
+        _error.value   = null
         try {
-            val geometry = "${bounds.lonWest},${bounds.latSouth},${bounds.lonEast},${bounds.latNorth}"
-            val where = ApiClient.DOG_RESTRICTION_TYPES +
-                    if (activeOnly) ApiClient.ACTIVE_FILTER else ""
+            val activeOnly = AppSettings.getActiveOnly(ctx)
+            val geometry   = "${bounds.lonWest},${bounds.latSouth},${bounds.lonEast},${bounds.latNorth}"
+            val where      = ApiClient.DOG_RESTRICTION_TYPES +
+                             if (activeOnly) ApiClient.ACTIVE_FILTER else ""
 
-            val json = ApiClient.api.getRestrictions(
-                geometry = geometry,
-                where    = where
-            )
-
+            val json         = ApiClient.api.getRestrictions(geometry = geometry, where = where)
             val restrictions = ApiClient.parseRestrictions(json)
             _restrictions.value = restrictions
 
@@ -88,7 +86,7 @@ class MapViewModel : ViewModel() {
                 _error.value = "Too many results — zoom in for complete data"
             }
         } catch (e: Exception) {
-            _error.value = "Could not load England data: ${e.message}"
+            _error.value = "Could not load data: ${e.message}"
         }
         _loading.value = false
     }
@@ -100,8 +98,6 @@ class MapViewModel : ViewModel() {
                 bounds.lonEast, bounds.latNorth
             )
             _walesLand.value = land
-        } catch (e: Exception) {
-            // Wales failure is non-critical — don't overwrite England error
-        }
+        } catch (e: Exception) { }
     }
 }
