@@ -16,9 +16,9 @@
         android:gravity="center_vertical"
         android:padding="14dp">
 
-        <!-- Visibility toggle button -->
+        <!-- Visibility toggle -->
         <TextView
-            android:id="@+id/visibilityDot"
+            android:id="@+id/visibilityBtn"
             android:layout_width="64dp"
             android:layout_height="28dp"
             android:gravity="center"
@@ -30,7 +30,7 @@
             android:background="@drawable/dot_green"
             android:text="VISIBLE"/>
 
-        <!-- Route info -->
+        <!-- Route name + restriction count -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -47,38 +47,15 @@
                 android:fontFamily="sans-serif"
                 android:text="Route Name"/>
 
-            <LinearLayout
+            <TextView
+                android:id="@+id/routeRestrictions"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_marginTop="2dp">
-
-                <TextView
-                    android:id="@+id/routeDistance"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textSize="11sp"
-                    android:textColor="#888888"
-                    android:fontFamily="sans-serif"
-                    android:text="0.0km"/>
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text=" · "
-                    android:textSize="11sp"
-                    android:textColor="#888888"/>
-
-                <TextView
-                    android:id="@+id/routeRestrictions"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textSize="11sp"
-                    android:textColor="#888888"
-                    android:fontFamily="sans-serif"
-                    android:text="0 restrictions"/>
-            </LinearLayout>
+                android:textSize="11sp"
+                android:textColor="#888888"
+                android:fontFamily="sans-serif"
+                android:layout_marginTop="2dp"
+                android:text="0 restrictions"/>
         </LinearLayout>
 
         <!-- Safety dot -->
@@ -89,14 +66,14 @@
             android:background="@drawable/dot_green"
             android:layout_marginEnd="12dp"/>
 
-        <!-- Delete button -->
+        <!-- Delete -->
         <ImageButton
             android:id="@+id/deleteButton"
             android:layout_width="32dp"
             android:layout_height="32dp"
             android:background="@drawable/circle_bg"
             android:src="@android:drawable/ic_menu_close_clear_cancel"
-            android:contentDescription="Delete route"/>
+            android:contentDescription="Delete"/>
 
     </LinearLayout>
 </androidx.cardview.widget.CardView>

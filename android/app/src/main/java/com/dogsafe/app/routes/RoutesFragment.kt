@@ -7,17 +7,16 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ProgressBar
-import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.dogsafe.app.MainActivity
 import com.dogsafe.app.R
-import com.dogsafe.app.routes.RouteAnalyser.isNestingBirdSeason
-import com.google.android.material.button.MaterialButton
 import com.dogsafe.app.settings.AppSettings
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.snackbar.Snackbar
 
 class RoutesFragment : Fragment() {
@@ -48,27 +47,29 @@ class RoutesFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        viewModel = ViewModelProvider(this)[RoutesViewModel::class.java]
-
+        viewModel    = ViewModelProvider(this)[RoutesViewModel::class.java]
         recyclerView = view.findViewById(R.id.routesList)
         emptyState   = view.findViewById(R.id.emptyState)
         progressBar  = view.findViewById(R.id.routesProgress)
         seasonBanner = view.findViewById(R.id.seasonBanner)
 
-        // Show season banner if applicable
-        if (isNestingBirdSeason() && AppSettings.getSeasonBanner(requireContext())) seasonBanner.visibility = View.VISIBLE
+        // Season banner
+        if (RouteAnalyser.isNestingBirdSeason() && AppSettings.getSeasonBanner(requireContext())) {
+            seasonBanner.visibility = View.VISIBLE
+        }
 
-        // Setup RecyclerView
+        // Adapter
         adapter = RoutesAdapter(
             routes             = emptyList(),
             onVisibilityToggle = { route ->
                 viewModel.toggleVisibility(requireContext(), route) {
-                    (activity as? com.dogsafe.app.MainActivity)?.getMapFragment()?.refreshRoutes()
+                    (activity as? MainActivity)?.getMapFragment()?.refreshRoutes()
                 }
             },
-            onDelete           = { route -> confirmDelete(route) },
-            onRowClick         = { route -> onRouteSelected(route) }
+            onDelete  = { route -> confirmDelete(route) },
+            onRowClick = { route -> onRouteSelected(route) }
         )
+        recyclerView.layoutManager = LinearLayoutManager(requireContext())
         recyclerView.adapter = adapter
 
         // Import button
@@ -76,7 +77,7 @@ class RoutesFragment : Fragment() {
             openFilePicker()
         }
 
-        // Observe
+        // Observers
         viewModel.routes.observe(viewLifecycleOwner) { routes ->
             adapter.updateRoutes(routes)
             recyclerView.visibility = if (routes.isEmpty()) View.GONE else View.VISIBLE
@@ -88,16 +89,14 @@ class RoutesFragment : Fragment() {
         }
 
         viewModel.error.observe(viewLifecycleOwner) { error ->
-            error?.let {
-                Snackbar.make(view, it, Snackbar.LENGTH_LONG).show()
-            }
+            error?.let { Snackbar.make(view, it, Snackbar.LENGTH_LONG).show() }
         }
 
         viewModel.importSuccess.observe(viewLifecycleOwner) { message ->
             message?.let {
                 Snackbar.make(view, it, Snackbar.LENGTH_LONG).show()
+                (activity as? MainActivity)?.getMapFragment()?.refreshRoutes()
             }
-                (activity as? com.dogsafe.app.MainActivity)?.getMapFragment()?.refreshRoutes()
         }
 
         viewModel.loadRoutes(requireContext())
@@ -109,18 +108,11 @@ class RoutesFragment : Fragment() {
     }
 
     private fun openFilePicker() {
-        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-            addCategory(Intent.CATEGORY_OPENABLE)
+        val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
             type = "*/*"
-            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf(
-                "application/gpx+xml",
-                "application/octet-stream",
-                "text/xml",
-                "text/plain",
-                "*/*"
-            ))
+            addCategory(Intent.CATEGORY_OPENABLE)
         }
-        filePicker.launch(intent)
+        filePicker.launch(Intent.createChooser(intent, "Select GPX file"))
     }
 
     private fun confirmDelete(route: com.dogsafe.app.db.RouteEntity) {
@@ -128,16 +120,16 @@ class RoutesFragment : Fragment() {
             .setTitle("Delete Route")
             .setMessage("Delete \"${route.name}\"?")
             .setPositiveButton("Delete") { _, _ ->
-                viewModel.deleteRoute(requireContext(), route)
-                (activity as? com.dogsafe.app.MainActivity)?.getMapFragment()?.refreshRoutes()
+                viewModel.deleteRoute(requireContext(), route) {
+                    (activity as? MainActivity)?.getMapFragment()?.refreshRoutes()
+                }
             }
             .setNegativeButton("Cancel", null)
             .show()
     }
 
     private fun onRouteSelected(route: com.dogsafe.app.db.RouteEntity) {
-        // Notify MainActivity to switch to map tab and show route
-        (activity as? com.dogsafe.app.MainActivity)?.showRouteOnMap(route)
+        (activity as? MainActivity)?.showRouteOnMap(route)
     }
 
     private fun getFileName(uri: android.net.Uri): String? {
