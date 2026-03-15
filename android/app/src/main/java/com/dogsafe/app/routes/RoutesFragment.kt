@@ -98,7 +98,6 @@ class RoutesFragment : Fragment() {
         viewModel.loadRoutes(requireContext())
     }
 
-    }
 
     private fun openFilePicker() {
         val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
