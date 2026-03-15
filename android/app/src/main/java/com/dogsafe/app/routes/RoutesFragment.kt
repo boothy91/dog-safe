@@ -61,7 +61,10 @@ class RoutesFragment : Fragment() {
         // Setup RecyclerView
         adapter = RoutesAdapter(
             routes             = emptyList(),
-            onVisibilityToggle = { route -> viewModel.toggleVisibility(requireContext(), route) },
+            onVisibilityToggle = { route ->
+                viewModel.toggleVisibility(requireContext(), route)
+                (activity as? com.dogsafe.app.MainActivity)?.getMapFragment()?.refreshRoutes()
+            },
             onDelete           = { route -> confirmDelete(route) },
             onRowClick         = { route -> onRouteSelected(route) }
         )

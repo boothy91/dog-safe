@@ -62,6 +62,8 @@ class MainActivity : AppCompatActivity() {
             .commit()
     }
 
+    fun getMapFragment(): MapFragment = mapFragment
+
     fun showRouteOnMap(route: RouteEntity) {
         bottomNav.selectedItemId = R.id.nav_map
         showFragment(mapFragment)

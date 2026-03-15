@@ -19,6 +19,7 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import com.dogsafe.app.db.AppDatabase
 import com.dogsafe.app.db.RouteEntity
 import com.dogsafe.app.model.Restriction
 import com.dogsafe.app.model.RestrictionType
@@ -62,6 +63,9 @@ class MapFragment : Fragment() {
     private var locationOverlay: MyLocationNewOverlay? = null
     private var searchResults = mutableListOf<SearchResult>()
 
+    // Track drawn polylines by route id
+    private val routePolylines = mutableMapOf<Int, Polyline>()
+
     private val locationPermission = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -81,14 +85,14 @@ class MapFragment : Fragment() {
             userAgentValue = "DogSafe/1.0 (com.dogsafe.app)"
         }
 
-        viewModel       = ViewModelProvider(requireActivity())[MapViewModel::class.java]
-        statusText      = view.findViewById(R.id.statusText)
-        progressBar     = view.findViewById(R.id.progressBar)
-        legend          = view.findViewById(R.id.legend)
-        locationFab     = view.findViewById(R.id.locationFab)
-        searchInput     = view.findViewById(R.id.searchInput)
+        viewModel         = ViewModelProvider(requireActivity())[MapViewModel::class.java]
+        statusText        = view.findViewById(R.id.statusText)
+        progressBar       = view.findViewById(R.id.progressBar)
+        legend            = view.findViewById(R.id.legend)
+        locationFab       = view.findViewById(R.id.locationFab)
+        searchInput       = view.findViewById(R.id.searchInput)
         searchResultsList = view.findViewById(R.id.searchResults)
-        areaChipGroup   = view.findViewById(R.id.areaChipGroup)
+        areaChipGroup     = view.findViewById(R.id.areaChipGroup)
 
         setupMap(view)
         setupBottomSheet(view)
@@ -97,16 +101,16 @@ class MapFragment : Fragment() {
         setupLocationFab()
         setupObservers()
         requestLocation()
+
+        // Load all visible routes on start
+        refreshRoutes()
     }
 
     private fun setupMap(view: View) {
         mapView = view.findViewById(R.id.map)
         mapView.setMultiTouchControls(true)
-
-        // Apply map style from settings
         applyMapStyle()
 
-        // Restore last position or default
         val ctx  = requireContext()
         val lat  = AppSettings.getLastLat(ctx)
         val lon  = AppSettings.getLastLon(ctx)
@@ -116,14 +120,10 @@ class MapFragment : Fragment() {
 
         mapView.addMapListener(object : org.osmdroid.events.MapListener {
             override fun onScroll(event: org.osmdroid.events.ScrollEvent): Boolean {
-                savePosition()
-                viewModel.onMapMoved(mapView.boundingBox)
-                return false
+                savePosition(); viewModel.onMapMoved(mapView.boundingBox); return false
             }
             override fun onZoom(event: org.osmdroid.events.ZoomEvent): Boolean {
-                savePosition()
-                viewModel.onMapMoved(mapView.boundingBox)
-                return false
+                savePosition(); viewModel.onMapMoved(mapView.boundingBox); return false
             }
         })
     }
@@ -131,9 +131,13 @@ class MapFragment : Fragment() {
     private fun applyMapStyle() {
         val style = AppSettings.getMapStyle(requireContext())
         mapView.setTileSource(when (style) {
-            "topo"     -> TileSourceFactory.OpenTopo
-            "satellite" -> org.osmdroid.tileprovider.tilesource.XYTileSource("Satellite", 0, 19, 256, ".jpg", arrayOf("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/"), "© Esri")
-            else       -> TileSourceFactory.MAPNIK
+            "topo"      -> TileSourceFactory.OpenTopo
+            "satellite" -> org.osmdroid.tileprovider.tilesource.XYTileSource(
+                "Satellite", 0, 19, 256, ".jpg",
+                arrayOf("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/"),
+                "© Esri"
+            )
+            else -> TileSourceFactory.MAPNIK
         })
     }
 
@@ -144,14 +148,82 @@ class MapFragment : Fragment() {
         }
     }
 
+    // Called by RoutesFragment when visibility changes
+    fun refreshRoutes() {
+        lifecycleScope.launch {
+            val routes = withContext(Dispatchers.IO) {
+                AppDatabase.getInstance(requireContext()).routeDao().getAll()
+            }
+
+            // Remove all existing route polylines
+            routePolylines.values.forEach { mapView.overlays.remove(it) }
+            routePolylines.clear()
+
+            // Draw only visible routes
+            routes.filter { it.isVisible }.forEach { route ->
+                drawRoute(route)
+            }
+            mapView.invalidate()
+        }
+    }
+
+    private suspend fun drawRoute(route: RouteEntity) {
+        val points = withContext(Dispatchers.IO) {
+            try {
+                val gpxFile = File(requireContext().cacheDir, "routes/${route.gpxFileName}")
+                if (!gpxFile.exists()) return@withContext emptyList()
+                GpxParser.parse(gpxFile.inputStream(), route.name).points
+            } catch (e: Exception) { emptyList() }
+        }
+        if (points.isEmpty()) return
+
+        val polyline = Polyline().apply {
+            title = "route_${route.id}"
+            setPoints(points.map { GeoPoint(it.lat, it.lon) })
+            outlinePaint.color = when (route.safetyStatus) {
+                "RED"   -> android.graphics.Color.RED
+                "AMBER" -> android.graphics.Color.parseColor("#f59e0b")
+                else    -> android.graphics.Color.parseColor("#22c55e")
+            }
+            outlinePaint.strokeWidth = 6f
+        }
+        routePolylines[route.id] = polyline
+        mapView.overlays.add(polyline)
+    }
+
+    fun showRouteOnMap(route: RouteEntity) {
+        lifecycleScope.launch {
+            // Make sure route is drawn
+            if (!routePolylines.containsKey(route.id)) {
+                drawRoute(route)
+                mapView.invalidate()
+            }
+
+            // Zoom to route
+            val points = withContext(Dispatchers.IO) {
+                try {
+                    val gpxFile = File(requireContext().cacheDir, "routes/${route.gpxFileName}")
+                    if (!gpxFile.exists()) return@withContext emptyList()
+                    GpxParser.parse(gpxFile.inputStream(), route.name).points
+                } catch (e: Exception) { emptyList() }
+            }
+            if (points.isEmpty()) return@launch
+
+            val center = GeoPoint(
+                (points.minOf { it.lat } + points.maxOf { it.lat }) / 2,
+                (points.minOf { it.lon } + points.maxOf { it.lon }) / 2
+            )
+            mapView.controller.animateTo(center)
+            mapView.controller.setZoom(12.0)
+            mapView.invalidate()
+        }
+    }
+
     private fun savePosition() {
         if (::mapView.isInitialized && AppSettings.getRememberPosition(requireContext())) {
             val center = mapView.mapCenter
             AppSettings.saveLastPosition(
-                requireContext(),
-                center.latitude,
-                center.longitude,
-                mapView.zoomLevelDouble
+                requireContext(), center.latitude, center.longitude, mapView.zoomLevelDouble
             )
         }
     }
@@ -296,41 +368,6 @@ class MapFragment : Fragment() {
         mapView.invalidate()
     }
 
-    fun showRouteOnMap(route: RouteEntity) {
-        lifecycleScope.launch {
-            val points = withContext(Dispatchers.IO) {
-                try {
-                    val gpxFile = File(requireContext().cacheDir, "routes/${route.gpxFileName}")
-                    if (!gpxFile.exists()) return@withContext emptyList()
-                    GpxParser.parse(gpxFile.inputStream(), route.name).points
-                } catch (e: Exception) { emptyList() }
-            }
-            if (points.isEmpty()) return@launch
-
-            mapView.overlays.removeAll { it is Polyline && it.title?.startsWith("route_") == true }
-
-            val polyline = Polyline().apply {
-                title = "route_${route.id}"
-                setPoints(points.map { GeoPoint(it.lat, it.lon) })
-                outlinePaint.color = when (route.safetyStatus) {
-                    "RED"   -> android.graphics.Color.RED
-                    "AMBER" -> android.graphics.Color.parseColor("#f59e0b")
-                    else    -> android.graphics.Color.parseColor("#22c55e")
-                }
-                outlinePaint.strokeWidth = 6f
-            }
-            mapView.overlays.add(polyline)
-
-            val minLat = points.minOf { it.lat }
-            val maxLat = points.maxOf { it.lat }
-            val minLon = points.minOf { it.lon }
-            val maxLon = points.maxOf { it.lon }
-            mapView.controller.animateTo(GeoPoint((minLat + maxLat) / 2, (minLon + maxLon) / 2))
-            mapView.controller.setZoom(12.0)
-            mapView.invalidate()
-        }
-    }
-
     private fun showRestrictionDetail(restriction: Restriction) {
         val v  = view ?: return
         val rt = RestrictionType.fromCode(restriction.type)
@@ -392,7 +429,6 @@ class MapFragment : Fragment() {
     private fun enableLocation() {
         locationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(requireContext()), mapView).apply {
             enableMyLocation()
-            // No follow location — only moves on FAB tap
         }
         mapView.overlays.add(locationOverlay)
     }
@@ -407,8 +443,8 @@ class MapFragment : Fragment() {
         super.onResume()
         if (::mapView.isInitialized) {
             mapView.onResume()
-            applyMapStyle() // Re-apply in case settings changed
-            viewModel.onMapMoved(mapView.boundingBox) // Re-fetch with latest settings
+            applyMapStyle()
+            viewModel.onMapMoved(mapView.boundingBox)
         }
     }
 
