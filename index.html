@@ -3,208 +3,238 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dog Safe · CROW Restriction Checker</title>
+  <title>Dog Safe · CROW Act Dog Restriction Checker</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Georgia, serif; background: #f5f0e8; color: #2c1810; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+    body { font-family: Georgia, serif; background: #f5f0e8; color: #2c1810; display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
 
+    /* Header */
     #header {
       background: linear-gradient(135deg, #2d5a27, #1a3d15);
       color: white; padding: 12px 16px;
       display: flex; align-items: center; gap: 12px;
       box-shadow: 0 3px 12px rgba(0,0,0,0.3);
-      flex-shrink: 0;
-      z-index: 1000;
+      flex-shrink: 0; z-index: 1000;
     }
+    #header img { width: 40px; height: 40px; border-radius: 8px; }
     #header h1 { font-size: 20px; letter-spacing: -0.5px; }
     #header p  { font-size: 11px; opacity: 0.8; font-family: sans-serif; margin-top: 2px; }
 
-    #toolbar {
-      background: #fff; border-bottom: 1px solid #ddd;
-      padding: 8px 12px; display: flex; align-items: center;
-      gap: 8px; flex-wrap: wrap; flex-shrink: 0;
-      z-index: 999;
+    /* Search bar */
+    #search-bar {
+      background: #f5f0e8; padding: 8px 10px;
+      display: flex; gap: 8px; align-items: center;
+      flex-shrink: 0; z-index: 999; border-bottom: 1px solid #ddd;
+      position: relative;
     }
-    .loc-btn {
-      padding: 5px 11px; border-radius: 16px;
+    #search-input {
+      flex: 1; padding: 8px 14px; border-radius: 20px;
+      border: 2px solid #2d5a27; font-size: 14px;
+      font-family: sans-serif; color: #000; outline: none;
+      background: white;
+    }
+    #search-input::placeholder { color: #888; }
+    #search-btn {
+      padding: 8px 16px; border-radius: 20px; border: none;
+      background: #2d5a27; color: white; font-size: 13px;
+      font-family: sans-serif; cursor: pointer; font-weight: bold;
+    }
+    #search-results {
+      position: absolute; top: 100%; left: 10px; right: 10px;
+      background: white; border: 1px solid #ddd; border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 2000;
+      display: none; max-height: 200px; overflow-y: auto;
+    }
+    .search-result-item {
+      padding: 10px 14px; cursor: pointer; font-family: sans-serif;
+      font-size: 13px; border-bottom: 1px solid #f0ede8; color: #000;
+    }
+    .search-result-item:hover { background: #f5f0e8; }
+
+    /* Area chips */
+    #chips {
+      background: #eef5f0; padding: 6px 10px;
+      display: flex; gap: 6px; flex-wrap: wrap;
+      flex-shrink: 0; border-bottom: 1px solid #ddd;
+    }
+    .chip {
+      padding: 5px 12px; border-radius: 16px;
       border: 2px solid #ddd; background: white;
       color: #555; font-size: 12px; font-family: sans-serif;
-      cursor: pointer;
+      cursor: pointer; transition: all 0.15s;
     }
-    .loc-btn.active {
-      border-color: #2d5a27; background: #2d5a27; color: white; font-weight: bold;
-    }
-    #active-toggle {
-      margin-left: auto; display: flex; align-items: center;
-      gap: 6px; font-family: sans-serif; font-size: 12px; cursor: pointer;
-    }
-    #active-toggle input { width: 15px; height: 15px; accentColor: #2d5a27; }
+    .chip.active { border-color: #2d5a27; background: #2d5a27; color: white; font-weight: bold; }
+    .chip.wales  { border-color: #b45309; }
+    .chip.wales.active { background: #b45309; border-color: #b45309; }
 
+    /* Status bar */
     #status-bar {
       background: #2d5a27; color: white;
       padding: 5px 12px; font-family: sans-serif; font-size: 11px;
-      display: flex; gap: 16px; flex-wrap: wrap; align-items: center;
+      display: flex; gap: 12px; flex-wrap: wrap; align-items: center;
       flex-shrink: 0; min-height: 26px;
     }
+    #status-bar label { display: flex; align-items: center; gap: 5px; cursor: pointer; margin-left: auto; }
 
+    /* Season banner */
+    #season-banner {
+      background: #fef3cd; color: #856404;
+      padding: 7px 12px; font-family: sans-serif; font-size: 12px;
+      flex-shrink: 0; display: none; border-bottom: 1px solid #fde68a;
+    }
+
+    /* Map */
     #map-container { flex: 1; position: relative; }
     #map { width: 100%; height: 100%; }
 
+    /* Loading */
+    #loading {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255,255,255,0.9); padding: 16px 24px;
+      border-radius: 10px; font-family: sans-serif; font-size: 14px;
+      display: none; z-index: 800; box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    }
+
+    /* Legend */
+    #legend {
+      position: absolute; bottom: 16px; left: 8px;
+      background: rgba(245,240,232,0.95); border-radius: 8px;
+      padding: 8px 10px; font-family: sans-serif; font-size: 11px;
+      z-index: 800; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      border: 1px solid #ddd; line-height: 2;
+    }
+    #legend .leg-title { font-weight: bold; font-size: 12px; color: #2c1810; padding-bottom: 2px; }
+    .leg-row { display: flex; align-items: center; gap: 6px; color: #2c1810; }
+    .leg-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+
+    /* Bottom panel */
     #panel {
       position: absolute; bottom: 0; left: 0; right: 0;
       background: white; border-top: 3px solid #2d5a27;
-      max-height: 45%; overflow-y: auto;
+      max-height: 50%; overflow-y: auto;
       transform: translateY(100%);
       transition: transform 0.3s ease;
-      z-index: 900;
-      border-radius: 12px 12px 0 0;
+      z-index: 900; border-radius: 12px 12px 0 0;
       box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
     }
     #panel.open { transform: translateY(0); }
-
+    #panel-handle {
+      width: 40px; height: 4px; background: #ddd;
+      border-radius: 2px; margin: 10px auto 0;
+    }
     #panel-header {
       position: sticky; top: 0; background: white;
-      padding: 12px 16px; border-bottom: 1px solid #eee;
+      padding: 10px 16px; border-bottom: 1px solid #f0ede8;
       display: flex; align-items: center; justify-content: space-between;
-      z-index: 10;
     }
     #panel-title { font-size: 15px; font-weight: bold; font-family: sans-serif; }
     #panel-close {
       background: #f5f0e8; border: none; border-radius: 50%;
-      width: 28px; height: 28px; font-size: 16px; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
+      width: 28px; height: 28px; font-size: 14px; cursor: pointer;
     }
-    #panel-content { padding: 12px 16px 20px; font-family: sans-serif; }
-
-    .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
-    .detail-item .label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
-    .detail-item .value { font-size: 13px; font-weight: bold; }
-
-    .badge {
-      display: inline-block; padding: 3px 9px; border-radius: 10px;
-      font-size: 11px; font-weight: bold;
-    }
-    .badge.active   { background: #dcfce7; color: #166534; }
-    .badge.expired  { background: #fee2e2; color: #991b1b; }
-
-    .pdf-btn {
+    #panel-body { padding: 14px 16px 24px; font-family: sans-serif; }
+    .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+    .detail-item .dlabel { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+    .detail-item .dval { font-size: 13px; font-weight: bold; color: #2c1810; }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 11px; font-weight: bold; }
+    .badge-active  { background: #dcfce7; color: #166534; }
+    .badge-expired { background: #fee2e2; color: #991b1b; }
+    .badge-open    { background: #dcfce7; color: #166534; }
+    #pdf-btn {
       display: block; width: 100%; padding: 12px;
       background: #2d5a27; color: white; border: none;
       border-radius: 8px; font-size: 13px; font-weight: bold;
       font-family: sans-serif; cursor: pointer; text-decoration: none;
       text-align: center; margin-top: 4px;
     }
-
-    #loading-overlay {
-      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(255,255,255,0.7); display: flex;
-      align-items: center; justify-content: center;
-      z-index: 800; pointer-events: none; opacity: 0;
-      transition: opacity 0.2s;
-    }
-    #loading-overlay.show { opacity: 1; pointer-events: all; }
-    .spinner { font-size: 32px; animation: spin 1s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    .leaflet-popup-content-wrapper { border-radius: 10px; }
-    .leaflet-popup-content { font-family: sans-serif; font-size: 13px; line-height: 1.5; }
-    .popup-type { font-weight: bold; font-size: 14px; margin-bottom: 4px; }
-    .popup-purpose { color: #555; font-size: 12px; margin-bottom: 8px; }
-    .popup-dates { font-size: 11px; color: #777; margin-bottom: 8px; }
-    .popup-pdf { color: #2d5a27; font-weight: bold; font-size: 12px; }
-
-    #seasonal-note {
-      position: absolute; top: 8px; right: 8px;
-      background: rgba(255,248,240,0.95); border: 1px solid #e8d5b0;
-      border-radius: 8px; padding: 8px 10px;
-      font-family: sans-serif; font-size: 11px; color: #666;
-      max-width: 200px; line-height: 1.5; z-index: 800;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    #data-note {
+      margin-top: 12px; font-size: 11px; color: #888; line-height: 1.5;
     }
 
-    /* Legend */
-    #legend {
-      position: absolute; bottom: 24px; left: 8px;
-      background: rgba(255,255,255,0.95); border-radius: 8px;
-      padding: 8px 10px; font-family: sans-serif; font-size: 11px;
-      z-index: 800; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      border: 1px solid #ddd; line-height: 1.8;
+    /* Attribution */
+    #attribution {
+      position: absolute; bottom: 16px; right: 8px;
+      font-size: 9px; color: #666; font-family: sans-serif;
+      background: rgba(255,255,255,0.8); padding: 3px 6px;
+      border-radius: 4px; z-index: 800;
     }
-    #legend .leg-title { font-weight: bold; margin-bottom: 4px; font-size: 12px; }
-    .leg-row { display: flex; align-items: center; gap: 6px; }
-    .leg-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
   </style>
 </head>
 <body>
 
 <div id="header">
-  <span style="font-size:30px">🐕</span>
+  <img src="https://raw.githubusercontent.com/boothy91/dog-safe/main/android/app/src/main/res/mipmap-hdpi/ic_launcher.png" alt="Dog Safe" onerror="this.style.display='none'"/>
   <div>
     <h1>Dog Safe</h1>
-    <p>Live CROW Act dog restrictions · England · Natural England data</p>
+    <p>Live CROW Act dog restrictions · England &amp; Wales · Natural England data</p>
   </div>
 </div>
 
-<div id="toolbar">
-  <div id="loc-buttons"></div>
-  <label id="active-toggle">
-    <input type="checkbox" id="active-only" checked />
+<div id="search-bar">
+  <input id="search-input" type="text" placeholder="Postcode, place or area name" />
+  <button id="search-btn">Search</button>
+  <div id="search-results"></div>
+</div>
+
+<div id="chips">
+  <button class="chip" data-lat="54.1" data-lon="-2.1">Yorkshire Dales</button>
+  <button class="chip" data-lat="53.4" data-lon="-1.8">Peak District</button>
+  <button class="chip" data-lat="50.6" data-lon="-3.9">Dartmoor</button>
+  <button class="chip" data-lat="54.5" data-lon="-3.1">Lake District</button>
+  <button class="chip" data-lat="54.3" data-lon="-0.9">North York Moors</button>
+  <button class="chip" data-lat="51.1" data-lon="-3.6">Exmoor</button>
+  <button class="chip wales" data-lat="51.9" data-lon="-3.4">Brecon Beacons 🏴󠁧󠁢󠁷󠁬󠁳󠁿</button>
+  <button class="chip wales" data-lat="53.1" data-lon="-3.9">Snowdonia 🏴󠁧󠁢󠁷󠁬󠁳󠁿</button>
+</div>
+
+<div id="status-bar">
+  <span id="status-text">Select an area or search to begin</span>
+  <label>
+    <input type="checkbox" id="active-only" checked style="accent-color:#22c55e"/>
     Active only
   </label>
 </div>
 
-<div id="status-bar">
-  <span id="status-text">Select an area to begin</span>
+<div id="season-banner" id="season-banner">
+  🪶 <strong>1 Mar – 31 Jul:</strong> Short lead required near ground-nesting birds on all CROW access land
 </div>
 
 <div id="map-container">
   <div id="map"></div>
-
-  <div id="loading-overlay">
-    <div>
-      <div class="spinner">🔍</div>
-    </div>
-  </div>
-
-  <div id="seasonal-note">
-    🪶 <strong>Always:</strong> Short lead near livestock &amp; 1 Mar–31 Jul near nesting birds
-  </div>
+  <div id="loading">🔍 Loading restrictions…</div>
 
   <div id="legend">
     <div class="leg-title">Dog Restrictions</div>
     <div class="leg-row"><div class="leg-dot" style="background:#ef4444"></div> No Dogs</div>
     <div class="leg-row"><div class="leg-dot" style="background:#f97316"></div> No Dogs (except assistance)</div>
     <div class="leg-row"><div class="leg-dot" style="background:#eab308"></div> Dogs on Lead / Routes</div>
+    <div class="leg-row"><div class="leg-dot" style="background:#22c55e"></div> Wales Access Land</div>
   </div>
 
+  <div id="attribution">© Natural England · © NRW · © OpenStreetMap contributors</div>
+
   <div id="panel">
+    <div id="panel-handle"></div>
     <div id="panel-header">
       <div id="panel-title">Restriction Details</div>
       <button id="panel-close" onclick="closePanel()">✕</button>
     </div>
-    <div id="panel-content"></div>
+    <div id="panel-body"></div>
   </div>
 </div>
 
 <script>
-const LOCATIONS = [
-  { name: "Yorkshire Dales", lat: 54.1,  lng: -2.1  },
-  { name: "Peak District",   lat: 53.4,  lng: -1.8  },
-  { name: "Dartmoor",        lat: 50.6,  lng: -3.9  },
-  { name: "Lake District",   lat: 54.5,  lng: -3.1  },
-  { name: "North York Moors",lat: 54.3,  lng: -0.9  },
-  { name: "Exmoor",          lat: 51.1,  lng: -3.6  },
-];
-
+// ── Constants ──────────────────────────────────────────────────────────────
 const TYPE_INFO = {
-  "02": { label: "No Dogs",                              color: "#ef4444", fill: "#ef4444" },
-  "04": { label: "No Dogs (except assistance dogs)",     color: "#f97316", fill: "#f97316" },
-  "03": { label: "No Dogs (except guide/hearing dogs)",  color: "#f97316", fill: "#f97316" },
-  "05": { label: "Dogs on Leads",                        color: "#eab308", fill: "#eab308" },
-  "09": { label: "Dogs on Fenced Routes Only",           color: "#eab308", fill: "#eab308" },
-  "10": { label: "Marked Routes, Dogs on Leads",         color: "#eab308", fill: "#eab308" },
+  "02": { label: "No Dogs",                             color: "#ef4444", bg: "#fef2f2" },
+  "04": { label: "No Dogs (except assistance dogs)",    color: "#f97316", bg: "#fff7ed" },
+  "03": { label: "No Dogs (except guide/hearing dogs)", color: "#f97316", bg: "#fff7ed" },
+  "05": { label: "Dogs on Leads",                       color: "#eab308", bg: "#fefce8" },
+  "09": { label: "Dogs on Fenced Routes Only",          color: "#eab308", bg: "#fefce8" },
+  "10": { label: "Marked Routes, Dogs on Leads",        color: "#eab308", bg: "#fefce8" },
 };
 
 const PURPOSE_LABELS = {
@@ -217,194 +247,272 @@ const PURPOSE_LABELS = {
   "07": "🌿 Land management",
 };
 
-// --- Map init ---
-const map = L.map('map', { zoomControl: true });
+const WALES_BBOX = { minLat: 51.3, maxLat: 53.5, minLon: -5.4, maxLon: -2.6 };
+const ENG_BBOX   = { minLat: 49.9, maxLat: 55.8, minLon: -5.7, maxLon: 1.8  };
+
+// ── Map setup ─────────────────────────────────────────────────────────────
+const map = L.map('map', { zoomControl: true }).setView([54.1, -2.1], 11);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   maxZoom: 18
 }).addTo(map);
 
-let restrictionLayer = L.geoJSON(null, {
-  style: styleFeature,
-  onEachFeature: onEachFeature
-}).addTo(map);
+let restrictionLayer = L.geoJSON(null, { style: styleFeature, onEachFeature }).addTo(map);
+let walesLayer       = L.featureGroup().addTo(map);
 
-// --- Location buttons ---
-const locContainer = document.getElementById('loc-buttons');
-locContainer.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap';
-let activeLocName = null;
+// ── Season banner ─────────────────────────────────────────────────────────
+const month = new Date().getMonth(); // 0-indexed
+if (month >= 2 && month <= 6) document.getElementById('season-banner').style.display = 'block';
 
-LOCATIONS.forEach(loc => {
-  const btn = document.createElement('button');
-  btn.className = 'loc-btn';
-  btn.textContent = loc.name;
-  btn.onclick = () => {
-    map.setView([loc.lat, loc.lng], 11);
-    document.querySelectorAll('.loc-btn').forEach(b => b.classList.remove('active'));
+// ── Area chips ────────────────────────────────────────────────────────────
+document.querySelectorAll('.chip').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.chip').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    activeLocName = loc.name;
-  };
-  locContainer.appendChild(btn);
+    map.setView([+btn.dataset.lat, +btn.dataset.lon], 11);
+  });
 });
 
-// --- Active only toggle ---
-document.getElementById('active-only').addEventListener('change', () => {
-  fetchAndRender();
+// ── Search ────────────────────────────────────────────────────────────────
+const searchInput   = document.getElementById('search-input');
+const searchResults = document.getElementById('search-results');
+
+document.getElementById('search-btn').onclick = performSearch;
+searchInput.addEventListener('keydown', e => { if (e.key === 'Enter') performSearch(); });
+
+async function performSearch() {
+  const q = searchInput.value.trim();
+  if (!q) return;
+  try {
+    const res  = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&countrycodes=gb&limit=6`, {
+      headers: { 'User-Agent': 'DogSafe/1.0 (boothy91.github.io/dog-safe)' }
+    });
+    const data = await res.json();
+    if (!data.length) { searchResults.style.display = 'none'; return; }
+    if (data.length === 1) {
+      map.setView([+data[0].lat, +data[0].lon], 13);
+      searchResults.style.display = 'none';
+      return;
+    }
+    searchResults.innerHTML = data.map((r, i) =>
+      `<div class="search-result-item" data-i="${i}">${r.display_name.split(',').slice(0,2).join(',')}</div>`
+    ).join('');
+    searchResults.style.display = 'block';
+    searchResults.querySelectorAll('.search-result-item').forEach(el => {
+      el.onclick = () => {
+        const r = data[+el.dataset.i];
+        map.setView([+r.lat, +r.lon], 13);
+        searchResults.style.display = 'none';
+        searchInput.value = r.display_name.split(',').slice(0,2).join(',');
+      };
+    });
+  } catch(e) {
+    document.getElementById('status-text').textContent = 'Search failed — check connection';
+  }
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('#search-bar')) searchResults.style.display = 'none';
 });
 
-// --- Fetch ---
+// ── Active only toggle ────────────────────────────────────────────────────
+document.getElementById('active-only').addEventListener('change', fetchAndRender);
+
+// ── Fetch & render ─────────────────────────────────────────────────────────
+let fetchTimer;
+map.on('moveend', () => {
+  clearTimeout(fetchTimer);
+  fetchTimer = setTimeout(fetchAndRender, 400);
+});
+
 async function fetchAndRender() {
-  const b = map.getBounds();
+  const b         = map.getBounds();
   const activeOnly = document.getElementById('active-only').checked;
+  const zoom      = map.getZoom();
 
-  setLoading(true);
+  if (zoom < 8) {
+    document.getElementById('status-text').textContent = '🔍 Zoom in to see restrictions';
+    restrictionLayer.clearLayers();
+    walesLayer.clearLayers();
+    return;
+  }
 
-  const minLng = b.getWest(), minLat = b.getSouth();
-  const maxLng = b.getEast(), maxLat = b.getNorth();
+  const inEngland = b.getEast()  > ENG_BBOX.minLon && b.getWest()  < ENG_BBOX.maxLon &&
+                    b.getNorth() > ENG_BBOX.minLat && b.getSouth() < ENG_BBOX.maxLat;
+  const inWales   = b.getEast()  > WALES_BBOX.minLon && b.getWest()  < WALES_BBOX.maxLon &&
+                    b.getNorth() > WALES_BBOX.minLat && b.getSouth() < WALES_BBOX.maxLat;
 
+  document.getElementById('loading').style.display = 'block';
+
+  const promises = [];
+  if (inEngland) promises.push(fetchEngland(b, activeOnly));
+  else           restrictionLayer.clearLayers();
+
+  if (inWales)   promises.push(fetchWales(b));
+  else           walesLayer.clearLayers();
+
+  await Promise.all(promises);
+  document.getElementById('loading').style.display = 'none';
+
+  const engCount   = restrictionLayer.getLayers().length;
+  const walesCount = walesLayer.getLayers().length;
+  if (engCount > 0 && walesCount > 0)
+    document.getElementById('status-text').textContent = `🐕 ${engCount} restrictions · 🏴󠁧󠁢󠁷󠁬󠁳󠁿 ${walesCount} Wales areas`;
+  else if (engCount > 0)
+    document.getElementById('status-text').textContent = `🐕 ${engCount} restriction${engCount !== 1 ? 's' : ''} found`;
+  else if (walesCount > 0)
+    document.getElementById('status-text').textContent = `🏴󠁧󠁢󠁷󠁬󠁳󠁿 Wales: ${walesCount} access areas — no restriction data`;
+  else
+    document.getElementById('status-text').textContent = '✅ No dog restrictions in this area';
+}
+
+async function fetchEngland(b, activeOnly) {
   const dateFilter = activeOnly
-    ? `+AND+END_DATE>=CURRENT_TIMESTAMP+AND+START_DATE<=CURRENT_TIMESTAMP`
-    : "";
-
-  const types = "(TYPE%3D'02'+OR+TYPE%3D'04'+OR+TYPE%3D'03'+OR+TYPE%3D'05'+OR+TYPE%3D'09'+OR+TYPE%3D'10')";
-
+    ? `+AND+END_DATE>=CURRENT_TIMESTAMP+AND+START_DATE<=CURRENT_TIMESTAMP` : '';
+  const types = "(TYPE='02'+OR+TYPE='04'+OR+TYPE='03'+OR+TYPE='05'+OR+TYPE='09'+OR+TYPE='10')";
   const url = `https://services.arcgis.com/JJzESW51TqeY9uat/arcgis/rest/services/OASYS_RESTRICTION_PRD_VIEW/FeatureServer/0/query`
-    + `?geometry=${minLng},${minLat},${maxLng},${maxLat}`
+    + `?geometry=${b.getWest()},${b.getSouth()},${b.getEast()},${b.getNorth()}`
     + `&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects`
     + `&where=${types}${dateFilter}`
     + `&outFields=CASE_NUMBER,TYPE,PURPOSE,START_DATE,END_DATE,VIEW_MAP`
     + `&outSR=4326&returnGeometry=true&f=geojson`;
-
   try {
     const res  = await fetch(url);
     const data = await res.json();
-
-    // Deduplicate by CASE_NUMBER
+    // Deduplicate
     const seen = new Map();
     (data.features || []).forEach(f => {
       const cn = f.properties.CASE_NUMBER;
       if (!seen.has(cn) || f.properties.END_DATE > seen.get(cn).properties.END_DATE)
         seen.set(cn, f);
     });
-    const unique = { type: "FeatureCollection", features: Array.from(seen.values()) };
-
     restrictionLayer.clearLayers();
-    restrictionLayer.addData(unique);
-
-    // Status
-    const count = unique.features.length;
-    const typeCounts = {};
-    unique.features.forEach(f => {
-      const t = f.properties.TYPE;
-      typeCounts[t] = (typeCounts[t]||0)+1;
-    });
-
-    if (count === 0) {
-      setStatus(`✅ No dog restrictions in this area${activeOnly?" right now":""}`, "#166534");
-    } else {
-      const summary = Object.entries(typeCounts)
-        .map(([t,c]) => `${c}× ${TYPE_INFO[t]?.label||t}`)
-        .join("  ·  ");
-      setStatus(`🐕 ${count} restriction${count!==1?"s":""} found  ·  ${summary}`);
-    }
+    restrictionLayer.addData({ type: 'FeatureCollection', features: Array.from(seen.values()) });
   } catch(e) {
-    setStatus("⚠️ Could not load data — check connection", "#991b1b");
+    document.getElementById('status-text').textContent = '⚠️ Could not load England data';
   }
-
-  setLoading(false);
 }
 
-// --- Style ---
+async function fetchWales(b) {
+  const bbox = `${b.getWest()},${b.getSouth()},${b.getEast()},${b.getNorth()},EPSG:4326`;
+  const layers = [
+    'inspire-nrw:NRW_OPEN_COUNTRY_2014',
+    'inspire-nrw:NRW_COMMON_LAND_2014',
+    'inspire-nrw:NRW_PUBLIC_FOREST_2014',
+  ];
+  walesLayer.clearLayers();
+  for (const layer of layers) {
+    try {
+      const url = `https://datamap.gov.wales/geoserver/inspire-nrw/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=${layer}&outputFormat=application/json&srsName=EPSG:4326&count=100&bbox=${bbox}`;
+      const res  = await fetch(url);
+      const data = await res.json();
+      (data.features || []).forEach(f => {
+        if (!f.geometry) return;
+        const coords = f.geometry.type === 'MultiPolygon'
+          ? f.geometry.coordinates.flat()
+          : f.geometry.coordinates;
+        coords.forEach(ring => {
+          const latlngs = ring.map(([lon, lat]) => [lat, lon]);
+          const poly = L.polygon(latlngs, {
+            color: '#16a34a', fillColor: '#22c55e', fillOpacity: 0.2,
+            weight: 1.5
+          });
+          poly.bindPopup(`
+            <b>🏴󠁧󠁢󠁷󠁬󠁳󠁿 Wales CROW Access Land</b><br>
+            ${layerLabel(layer)}<br>
+            Area: ${f.properties.AREA_HA ? f.properties.AREA_HA.toFixed(1) + ' ha' : 'Unknown'}<br>
+            <em style="font-size:11px;color:#666">No dog restriction data available for Wales</em>
+          `);
+          walesLayer.addLayer(poly);
+        });
+      });
+    } catch(e) { /* skip failed layer */ }
+  }
+}
+
+function layerLabel(layer) {
+  if (layer.includes('OPEN_COUNTRY'))  return 'Open Country';
+  if (layer.includes('COMMON_LAND'))   return 'Common Land';
+  if (layer.includes('PUBLIC_FOREST')) return 'Public Forest';
+  return 'Access Land';
+}
+
+// ── Styling ───────────────────────────────────────────────────────────────
 function styleFeature(feature) {
-  const info = TYPE_INFO[feature.properties.TYPE] || {};
-  const now  = Date.now();
+  const info   = TYPE_INFO[feature.properties.TYPE] || {};
+  const now    = Date.now();
   const active = feature.properties.START_DATE <= now && feature.properties.END_DATE >= now;
   return {
-    color:       info.color || "#888",
-    fillColor:   info.fill  || "#888",
+    color:       info.color || '#888',
+    fillColor:   info.color || '#888',
     fillOpacity: active ? 0.35 : 0.15,
     weight:      active ? 2.5 : 1.5,
-    dashArray:   active ? null : "6,4",
-    opacity:     active ? 1 : 0.6,
+    dashArray:   active ? null : '6,4',
   };
 }
 
-// --- Popups ---
 function onEachFeature(feature, layer) {
-  const p      = feature.properties;
-  const info   = TYPE_INFO[p.TYPE] || {};
-  const now    = Date.now();
+  const p    = feature.properties;
+  const info = TYPE_INFO[p.TYPE] || {};
+  const now  = Date.now();
   const active = p.START_DATE <= now && p.END_DATE >= now;
   const pdfUrl = extractPdf(p.VIEW_MAP);
-  const purpose= PURPOSE_LABELS[p.PURPOSE] || "";
 
-  const popup = `
-    <div class="popup-type" style="color:${info.color||'#333'}">${info.label || p.TYPE}</div>
-    ${purpose ? `<div class="popup-purpose">${purpose}</div>` : ""}
-    <div class="popup-dates">
-      From: ${formatDate(p.START_DATE)}<br>
-      Until: ${formatDate(p.END_DATE)}
+  layer.bindPopup(`
+    <div style="font-family:sans-serif;font-size:13px">
+      <b style="color:${info.color || '#333'}">${info.label || p.TYPE}</b><br>
+      ${PURPOSE_LABELS[p.PURPOSE] ? PURPOSE_LABELS[p.PURPOSE] + '<br>' : ''}
+      <span style="font-size:11px;color:#666">Until: ${formatDate(p.END_DATE)}</span>
+      ${pdfUrl ? `<br><a href="${pdfUrl}" target="_blank" style="color:#2d5a27;font-weight:bold;font-size:12px">📄 View Official Map PDF →</a>` : ''}
     </div>
-    <span class="badge ${active?'active':'expired'}">${active?"ACTIVE":"EXPIRED"}</span>
-    ${pdfUrl ? `<br><br><a class="popup-pdf" href="${pdfUrl}" target="_blank">📄 View Official Map PDF →</a>` : ""}
-  `;
+  `, { maxWidth: 240 });
 
-  layer.bindPopup(popup, { maxWidth: 240 });
-
-  layer.on('click', () => openPanel(feature));
-
-  layer.on('mouseover', function() {
-    this.setStyle({ fillOpacity: 0.6, weight: 3.5 });
-  });
-  layer.on('mouseout', function() {
-    restrictionLayer.resetStyle(this);
-  });
+  layer.on('click', () => showPanel(feature));
+  layer.on('mouseover', function() { this.setStyle({ fillOpacity: 0.6, weight: 3.5 }); });
+  layer.on('mouseout',  function() { restrictionLayer.resetStyle(this); });
 }
 
-// --- Bottom Panel ---
-function openPanel(feature) {
+// ── Panel ─────────────────────────────────────────────────────────────────
+function showPanel(feature) {
   const p      = feature.properties;
   const info   = TYPE_INFO[p.TYPE] || {};
   const now    = Date.now();
   const active = p.START_DATE <= now && p.END_DATE >= now;
   const pdfUrl = extractPdf(p.VIEW_MAP);
-  const purpose= PURPOSE_LABELS[p.PURPOSE] || "—";
 
-  document.getElementById('panel-title').textContent = info.label || p.TYPE;
-  document.getElementById('panel-title').style.color = info.color || "#333";
+  document.getElementById('panel-title').textContent  = info.label || p.TYPE;
+  document.getElementById('panel-title').style.color  = info.color || '#333';
+  document.getElementById('legend').style.display     = 'none';
 
-  document.getElementById('panel-content').innerHTML = `
+  document.getElementById('panel-body').innerHTML = `
     <div class="detail-grid">
       <div class="detail-item">
-        <div class="label">Status</div>
-        <div class="value"><span class="badge ${active?'active':'expired'}">${active?"ACTIVE":"EXPIRED"}</span></div>
+        <div class="dlabel">Status</div>
+        <div class="dval"><span class="badge ${active ? 'badge-active' : 'badge-expired'}">${active ? 'ACTIVE' : 'EXPIRED'}</span></div>
       </div>
       <div class="detail-item">
-        <div class="label">Case Number</div>
-        <div class="value">${p.CASE_NUMBER}</div>
+        <div class="dlabel">Case Number</div>
+        <div class="dval">${p.CASE_NUMBER}</div>
       </div>
       <div class="detail-item">
-        <div class="label">Purpose</div>
-        <div class="value">${purpose}</div>
+        <div class="dlabel">Purpose</div>
+        <div class="dval">${PURPOSE_LABELS[p.PURPOSE] || '—'}</div>
       </div>
       <div class="detail-item">
-        <div class="label">Type Code</div>
-        <div class="value">${p.TYPE}</div>
+        <div class="dlabel">Type</div>
+        <div class="dval">${info.label || p.TYPE}</div>
       </div>
       <div class="detail-item">
-        <div class="label">From</div>
-        <div class="value">${formatDate(p.START_DATE)}</div>
+        <div class="dlabel">From</div>
+        <div class="dval">${formatDate(p.START_DATE)}</div>
       </div>
       <div class="detail-item">
-        <div class="label">Until</div>
-        <div class="value">${formatDate(p.END_DATE)}</div>
+        <div class="dlabel">Until</div>
+        <div class="dval">${formatDate(p.END_DATE)}</div>
       </div>
     </div>
-    ${pdfUrl ? `<a class="pdf-btn" href="${pdfUrl}" target="_blank">📄 View Official Restriction Map (PDF)</a>` : ""}
-    <p style="margin-top:12px;font-size:11px;color:#888;line-height:1.5">
-      Data source: Natural England · CROW Act 2000<br>
-      Always keep dogs on a lead near livestock.
-    </p>
+    ${pdfUrl ? `<a id="pdf-btn" href="${pdfUrl}" target="_blank">📄 View Official Restriction Map (PDF)</a>` : ''}
+    <p id="data-note">Data: Natural England · CROW Act 2000 · Open Government Licence<br>
+    Always check signs on the ground. Dogs must be on a short lead (max 2m) near livestock at all times.</p>
   `;
 
   document.getElementById('panel').classList.add('open');
@@ -412,35 +520,22 @@ function openPanel(feature) {
 
 function closePanel() {
   document.getElementById('panel').classList.remove('open');
+  document.getElementById('legend').style.display = 'block';
 }
 
-// --- Helpers ---
+// ── Helpers ───────────────────────────────────────────────────────────────
 function formatDate(ts) {
-  if (!ts) return "Unknown";
-  return new Date(ts).toLocaleDateString("en-GB", { day:"numeric", month:"short", year:"numeric" });
+  if (!ts) return 'Unknown';
+  return new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
-
 function extractPdf(vm) {
   const m = vm && vm.match(/href="([^"]+)"/);
   return m ? m[1] : null;
 }
 
-function setLoading(on) {
-  document.getElementById('loading-overlay').classList.toggle('show', on);
-}
-
-function setStatus(text, color) {
-  const el = document.getElementById('status-text');
-  el.textContent = text;
-  el.style.color = color || "white";
-}
-
-// --- Map events ---
-map.on('moveend', fetchAndRender);
-
-// --- Start at Yorkshire Dales ---
-map.setView([54.1, -2.1], 11);
-document.querySelector('.loc-btn').classList.add('active');
+// ── Initial load ──────────────────────────────────────────────────────────
+map.on('load', fetchAndRender);
+fetchAndRender();
 </script>
 </body>
 </html>
