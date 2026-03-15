@@ -71,6 +71,6 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         // Save last map position
-        mapFragment?.savePosition(this)
+        
     }
 }
