@@ -97,6 +97,7 @@ class RoutesFragment : Fragment() {
             message?.let {
                 Snackbar.make(view, it, Snackbar.LENGTH_LONG).show()
             }
+                (activity as? com.dogsafe.app.MainActivity)?.getMapFragment()?.refreshRoutes()
         }
 
         viewModel.loadRoutes(requireContext())
@@ -123,6 +124,7 @@ class RoutesFragment : Fragment() {
             .setMessage("Delete \"${route.name}\"?")
             .setPositiveButton("Delete") { _, _ ->
                 viewModel.deleteRoute(requireContext(), route)
+                (activity as? com.dogsafe.app.MainActivity)?.getMapFragment()?.refreshRoutes()
             }
             .setNegativeButton("Cancel", null)
             .show()
