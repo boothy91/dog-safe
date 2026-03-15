@@ -33,8 +33,8 @@ class RoutesViewModel : ViewModel() {
 
     fun importGpx(context: Context, uri: Uri, fileName: String) {
         viewModelScope.launch {
-            _loading.value = true
-            _error.value = null
+            _loading.postValue(true)
+            _error.postValue(null)
 
             try {
                 // Parse GPX
@@ -46,8 +46,8 @@ class RoutesViewModel : ViewModel() {
                 stream.close()
 
                 if (route.points.isEmpty()) {
-                    _error.value = "No route points found in GPX file"
-                    _loading.value = false
+                    _error.postValue("No route points found in GPX file")
+                    _loading.postValue(false)
                     return@launch
                 }
 
@@ -78,14 +78,14 @@ class RoutesViewModel : ViewModel() {
                 )
 
                 AppDatabase.getInstance(context).routeDao().insert(entity)
-                _importSuccess.value = "${route.name} imported — ${analysis.restrictions.size} restriction${if (analysis.restrictions.size != 1) "s" else ""} found"
-                loadRoutes(context)
+                _importSuccess.postValue("${route.name} imported — ${analysis.restrictions.size} restriction${if (analysis.restrictions.size != 1) "s" else ""} found")
+                loadRoutes(context))
 
             } catch (e: Exception) {
-                _error.value = "Import failed: ${e.message}"
+                _error.postValue("Import failed: ${e.message}")
             }
 
-            _loading.value = false
+            _loading.postValue(false)
         }
     }
 
