@@ -33,14 +33,14 @@ class SettingsFragment : Fragment() {
         }
 
         val spinnerMapStyle = view.findViewById<Spinner>(R.id.spinnerMapStyle)
-        val mapStyles = listOf("Standard", "Topo (hills & contours)", "Hike & Bike (trails)")
+        val mapStyles = listOf("Standard", "Topo (hills & contours)", "Satellite")
         val mapStyleAdapter = ArrayAdapter(ctx, R.layout.item_spinner, mapStyles)
         mapStyleAdapter.setDropDownViewResource(R.layout.item_spinner)
         spinnerMapStyle.adapter = mapStyleAdapter
-        spinnerMapStyle.setSelection(when (AppSettings.getMapStyle(ctx)) { "topo" -> 1; "hikebike" -> 2; else -> 0 })
+        spinnerMapStyle.setSelection(when (AppSettings.getMapStyle(ctx)) { "topo" -> 1; "satellite" -> 2; else -> 0 })
         spinnerMapStyle.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: android.widget.AdapterView<*>, v: View?, pos: Int, id: Long) {
-                AppSettings.setMapStyle(ctx, when (pos) { 1 -> "topo"; 2 -> "hikebike"; else -> "standard" })
+                AppSettings.setMapStyle(ctx, when (pos) { 1 -> "topo"; 2 -> "satellite"; else -> "standard" })
             }
             override fun onNothingSelected(parent: android.widget.AdapterView<*>) {}
         }

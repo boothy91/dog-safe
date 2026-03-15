@@ -132,7 +132,7 @@ class MapFragment : Fragment() {
         val style = AppSettings.getMapStyle(requireContext())
         mapView.setTileSource(when (style) {
             "topo"     -> TileSourceFactory.OpenTopo
-            "hikebike" -> TileSourceFactory.HIKEBIKEMAP
+            "satellite" -> org.osmdroid.tileprovider.tilesource.XYTileSource("Satellite", 0, 19, 256, ".jpg", arrayOf("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/"), "© Esri")
             else       -> TileSourceFactory.MAPNIK
         })
     }
