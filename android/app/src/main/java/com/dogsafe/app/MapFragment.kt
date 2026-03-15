@@ -36,6 +36,7 @@ import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.dogsafe.app.settings.AppSettings
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
@@ -104,8 +105,11 @@ class MapFragment : Fragment() {
         mapView = view.findViewById(R.id.map)
         mapView.setTileSource(TileSourceFactory.MAPNIK)
         mapView.setMultiTouchControls(true)
-        mapView.controller.setZoom(11.0)
-        mapView.controller.setCenter(GeoPoint(54.1, -2.1))
+        val lastLat = AppSettings.getLastLat(requireContext())
+        val lastLon = AppSettings.getLastLon(requireContext())
+        val lastZoom = AppSettings.getLastZoom(requireContext())
+        mapView.controller.setCenter(GeoPoint(lastLat, lastLon))
+        mapView.controller.setZoom(lastZoom)
 
         mapView.addMapListener(object : org.osmdroid.events.MapListener {
             override fun onScroll(event: org.osmdroid.events.ScrollEvent): Boolean {
@@ -153,7 +157,6 @@ class MapFragment : Fragment() {
                 isCheckable = true
                 setOnClickListener {
                     mapView.controller.animateTo(point)
-                    mapView.controller.setZoom(11.0)
                     hideKeyboard()
                     searchResultsList.visibility = View.GONE
                 }
@@ -357,7 +360,7 @@ class MapFragment : Fragment() {
 
     private fun enableLocation() {
         locationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(requireContext()), mapView).apply {
-            enableMyLocation()
+            enableMyLocation(); enableFollowLocation()
         }
         mapView.overlays.add(locationOverlay)
         locationOverlay?.runOnFirstFix {
@@ -380,3 +383,10 @@ class MapFragment : Fragment() {
     override fun onResume()  { super.onResume();  if (::mapView.isInitialized) mapView.onResume()  }
     override fun onPause()   { super.onPause();   if (::mapView.isInitialized) mapView.onPause()   }
 }
+
+    fun savePosition(context: android.content.Context) {
+        if (::mapView.isInitialized) {
+            val center = mapView.mapCenter
+            AppSettings.saveLastPosition(context, center.latitude, center.longitude, mapView.zoomLevelDouble)
+        }
+    }

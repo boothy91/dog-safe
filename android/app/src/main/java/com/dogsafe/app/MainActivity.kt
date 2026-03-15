@@ -6,6 +6,8 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.dogsafe.app.db.RouteEntity
 import com.dogsafe.app.routes.RoutesFragment
+import com.dogsafe.app.settings.AppSettings
+import com.dogsafe.app.settings.SettingsFragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
 
 class MainActivity : AppCompatActivity() {
@@ -13,6 +15,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var bottomNav: BottomNavigationView
     private var mapFragment: MapFragment? = null
     private var routesFragment: RoutesFragment? = null
+    private var settingsFragment: SettingsFragment? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,14 +28,13 @@ class MainActivity : AppCompatActivity() {
         }
 
         bottomNav = findViewById(R.id.bottomNav)
-
-        // Show map by default
         showMap()
 
         bottomNav.setOnItemSelectedListener { item ->
             when (item.itemId) {
-                R.id.nav_map    -> { showMap();    true }
-                R.id.nav_routes -> { showRoutes(); true }
+                R.id.nav_map      -> { showMap();      true }
+                R.id.nav_routes   -> { showRoutes();   true }
+                R.id.nav_settings -> { showSettings(); true }
                 else -> false
             }
         }
@@ -52,12 +54,23 @@ class MainActivity : AppCompatActivity() {
             .commit()
     }
 
+    private fun showSettings() {
+        if (settingsFragment == null) settingsFragment = SettingsFragment()
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.fragmentContainer, settingsFragment!!)
+            .commit()
+    }
+
     fun showRouteOnMap(route: RouteEntity) {
-        // Switch to map tab and show route
         bottomNav.selectedItemId = R.id.nav_map
         showMap()
-        // Wait for fragment to be ready then show route
         supportFragmentManager.executePendingTransactions()
         mapFragment?.showRouteOnMap(route)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // Save last map position
+        mapFragment?.savePosition(this)
     }
 }
