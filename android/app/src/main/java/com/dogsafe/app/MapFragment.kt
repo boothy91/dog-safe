@@ -357,7 +357,7 @@ class MapFragment : Fragment() {
 
     private fun enableLocation() {
         locationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(requireContext()), mapView).apply {
-            enableMyLocation(); enableFollowLocation()
+            enableMyLocation()
         }
         mapView.overlays.add(locationOverlay)
         locationOverlay?.runOnFirstFix {
