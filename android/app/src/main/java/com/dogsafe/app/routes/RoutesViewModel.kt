@@ -89,10 +89,11 @@ class RoutesViewModel : ViewModel() {
         }
     }
 
-    fun toggleVisibility(context: Context, route: RouteEntity) {
+    fun toggleVisibility(context: Context, route: RouteEntity, onDone: (() -> Unit)? = null) {
         viewModelScope.launch {
             AppDatabase.getInstance(context).routeDao().setVisible(route.id, !route.isVisible)
             loadRoutes(context)
+            onDone?.invoke()
         }
     }
 

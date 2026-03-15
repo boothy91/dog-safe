@@ -62,13 +62,13 @@ class RoutesFragment : Fragment() {
         adapter = RoutesAdapter(
             routes             = emptyList(),
             onVisibilityToggle = { route ->
-                viewModel.toggleVisibility(requireContext(), route)
-                (activity as? com.dogsafe.app.MainActivity)?.getMapFragment()?.refreshRoutes()
+                viewModel.toggleVisibility(requireContext(), route) {
+                    (activity as? com.dogsafe.app.MainActivity)?.getMapFragment()?.refreshRoutes()
+                }
             },
             onDelete           = { route -> confirmDelete(route) },
             onRowClick         = { route -> onRouteSelected(route) }
         )
-        recyclerView.layoutManager = LinearLayoutManager(requireContext())
         recyclerView.adapter = adapter
 
         // Import button
