@@ -27,7 +27,7 @@ class RoutesViewModel : ViewModel() {
 
     fun loadRoutes(context: Context) {
         viewModelScope.launch {
-            _routes.value = AppDatabase.getInstance(context).routeDao().getAll()
+            _routes.postValue(kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { AppDatabase.getInstance(context).routeDao().getAll() })
         }
     }
 
