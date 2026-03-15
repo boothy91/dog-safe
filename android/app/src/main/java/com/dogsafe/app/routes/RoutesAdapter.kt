@@ -18,11 +18,11 @@ class RoutesAdapter(
 ) : RecyclerView.Adapter<RoutesAdapter.ViewHolder>() {
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val visibilityDot: View     = view.findViewById(R.id.visibilityDot)
-        val routeName: TextView     = view.findViewById(R.id.routeName)
-        val routeDistance: TextView = view.findViewById(R.id.routeDistance)
+        val visibilityBtn: TextView   = view.findViewById(R.id.visibilityDot)
+        val routeName: TextView       = view.findViewById(R.id.routeName)
+        val routeDistance: TextView   = view.findViewById(R.id.routeDistance)
         val routeRestrictions: TextView = view.findViewById(R.id.routeRestrictions)
-        val safetyDot: View         = view.findViewById(R.id.safetyDot)
+        val safetyDot: View           = view.findViewById(R.id.safetyDot)
         val deleteButton: ImageButton = view.findViewById(R.id.deleteButton)
     }
 
@@ -39,10 +39,14 @@ class RoutesAdapter(
         holder.routeDistance.text = AppSettings.formatDistance(holder.itemView.context, route.distanceKm)
         holder.routeRestrictions.text = "${route.restrictionCount} restriction${if (route.restrictionCount != 1) "s" else ""}"
 
-        // Visibility dot — green = visible, red = hidden
-        holder.visibilityDot.setBackgroundResource(
-            if (route.isVisible) R.drawable.dot_green else R.drawable.dot_red
-        )
+        // Visibility button
+        if (route.isVisible) {
+            holder.visibilityBtn.text = "VISIBLE"
+            holder.visibilityBtn.setBackgroundResource(R.drawable.dot_green)
+        } else {
+            holder.visibilityBtn.text = "HIDDEN"
+            holder.visibilityBtn.setBackgroundResource(R.drawable.dot_red)
+        }
 
         // Safety dot
         holder.safetyDot.setBackgroundResource(
@@ -53,7 +57,7 @@ class RoutesAdapter(
             }
         )
 
-        holder.visibilityDot.setOnClickListener { onVisibilityToggle(route) }
+        holder.visibilityBtn.setOnClickListener { onVisibilityToggle(route) }
         holder.deleteButton.setOnClickListener { onDelete(route) }
         holder.itemView.setOnClickListener { onRowClick(route) }
     }
