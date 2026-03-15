@@ -130,10 +130,11 @@ class MapFragment : Fragment() {
 
     private fun applyMapStyle() {
         val style = AppSettings.getMapStyle(requireContext())
-        mapView.setTileSource(
-            if (style == "cycle") TileSourceFactory.HIKEBIKEMAP
-            else TileSourceFactory.MAPNIK
-        )
+        mapView.setTileSource(when (style) {
+            "topo"     -> TileSourceFactory.OpenTopo
+            "hikebike" -> TileSourceFactory.HIKEBIKEMAP
+            else       -> TileSourceFactory.MAPNIK
+        })
     }
 
     fun refreshSettings() {

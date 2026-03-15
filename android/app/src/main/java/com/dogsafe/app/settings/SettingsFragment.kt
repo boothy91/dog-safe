@@ -10,6 +10,7 @@ import android.widget.ArrayAdapter
 import android.widget.Spinner
 import android.widget.TextView
 import androidx.fragment.app.Fragment
+import com.dogsafe.app.BuildConfig
 import com.dogsafe.app.R
 import com.google.android.material.switchmaterial.SwitchMaterial
 
@@ -32,13 +33,14 @@ class SettingsFragment : Fragment() {
         }
 
         val spinnerMapStyle = view.findViewById<Spinner>(R.id.spinnerMapStyle)
-        val mapStyles = listOf("Standard", "Cycle map")
-        val mapStyleAdapter = ArrayAdapter(ctx, android.R.layout.simple_spinner_dropdown_item, mapStyles)
+        val mapStyles = listOf("Standard", "Topo (hills & contours)", "Hike & Bike (trails)")
+        val mapStyleAdapter = ArrayAdapter(ctx, R.layout.item_spinner, mapStyles)
+        mapStyleAdapter.setDropDownViewResource(R.layout.item_spinner)
         spinnerMapStyle.adapter = mapStyleAdapter
-        spinnerMapStyle.setSelection(if (AppSettings.getMapStyle(ctx) == "cycle") 1 else 0)
+        spinnerMapStyle.setSelection(when (AppSettings.getMapStyle(ctx)) { "topo" -> 1; "hikebike" -> 2; else -> 0 })
         spinnerMapStyle.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: android.widget.AdapterView<*>, v: View?, pos: Int, id: Long) {
-                AppSettings.setMapStyle(ctx, if (pos == 1) "cycle" else "standard")
+                AppSettings.setMapStyle(ctx, when (pos) { 1 -> "topo"; 2 -> "hikebike"; else -> "standard" })
             }
             override fun onNothingSelected(parent: android.widget.AdapterView<*>) {}
         }
@@ -71,7 +73,8 @@ class SettingsFragment : Fragment() {
 
         val spinnerDistanceUnits = view.findViewById<Spinner>(R.id.spinnerDistanceUnits)
         val units = listOf("Kilometres (km)", "Miles")
-        val unitsAdapter = ArrayAdapter(ctx, android.R.layout.simple_spinner_dropdown_item, units)
+        val unitsAdapter = ArrayAdapter(ctx, R.layout.item_spinner, units)
+        unitsAdapter.setDropDownViewResource(R.layout.item_spinner)
         spinnerDistanceUnits.adapter = unitsAdapter
         spinnerDistanceUnits.setSelection(if (AppSettings.getDistanceUnits(ctx) == "miles") 1 else 0)
         spinnerDistanceUnits.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
@@ -82,7 +85,7 @@ class SettingsFragment : Fragment() {
         }
 
         // --- About ---
-        view.findViewById<TextView>(R.id.textVersion).text = "1.1.0"
+        view.findViewById<TextView>(R.id.textVersion).text = BuildConfig.VERSION_NAME
 
         view.findViewById<View>(R.id.linkNaturalEngland).setOnClickListener {
             startActivity(Intent(Intent.ACTION_VIEW,

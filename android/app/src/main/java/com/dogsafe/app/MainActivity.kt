@@ -4,18 +4,18 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.fragment.app.Fragment
 import com.dogsafe.app.db.RouteEntity
 import com.dogsafe.app.routes.RoutesFragment
-import com.dogsafe.app.settings.AppSettings
 import com.dogsafe.app.settings.SettingsFragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var bottomNav: BottomNavigationView
-    private var mapFragment: MapFragment? = null
-    private var routesFragment: RoutesFragment? = null
-    private var settingsFragment: SettingsFragment? = null
+    private lateinit var mapFragment: MapFragment
+    private lateinit var routesFragment: RoutesFragment
+    private lateinit var settingsFragment: SettingsFragment
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -27,50 +27,46 @@ class MainActivity : AppCompatActivity() {
             insets
         }
 
+        // Create fragments once
+        mapFragment      = MapFragment()
+        routesFragment   = RoutesFragment()
+        settingsFragment = SettingsFragment()
+
+        // Add all fragments, show map by default
+        supportFragmentManager.beginTransaction()
+            .add(R.id.fragmentContainer, mapFragment,      "map")
+            .add(R.id.fragmentContainer, routesFragment,   "routes")
+            .add(R.id.fragmentContainer, settingsFragment, "settings")
+            .hide(routesFragment)
+            .hide(settingsFragment)
+            .commit()
+
         bottomNav = findViewById(R.id.bottomNav)
-        showMap()
 
         bottomNav.setOnItemSelectedListener { item ->
             when (item.itemId) {
-                R.id.nav_map      -> { showMap(); mapFragment?.refreshSettings(); true }
-                R.id.nav_routes   -> { showRoutes();   true }
-                R.id.nav_settings -> { showSettings(); true }
+                R.id.nav_map      -> { showFragment(mapFragment);      mapFragment.refreshSettings(); true }
+                R.id.nav_routes   -> { showFragment(routesFragment);   true }
+                R.id.nav_settings -> { showFragment(settingsFragment); true }
                 else -> false
             }
         }
     }
 
-    private fun showMap() {
-        if (mapFragment == null) mapFragment = MapFragment()
+    private fun showFragment(fragment: Fragment) {
         supportFragmentManager.beginTransaction()
-            .replace(R.id.fragmentContainer, mapFragment!!)
-            .commit()
-    }
-
-    private fun showRoutes() {
-        if (routesFragment == null) routesFragment = RoutesFragment()
-        supportFragmentManager.beginTransaction()
-            .replace(R.id.fragmentContainer, routesFragment!!)
-            .commit()
-    }
-
-    private fun showSettings() {
-        if (settingsFragment == null) settingsFragment = SettingsFragment()
-        supportFragmentManager.beginTransaction()
-            .replace(R.id.fragmentContainer, settingsFragment!!)
+            .hide(mapFragment)
+            .hide(routesFragment)
+            .hide(settingsFragment)
+            .show(fragment)
             .commit()
     }
 
     fun showRouteOnMap(route: RouteEntity) {
         bottomNav.selectedItemId = R.id.nav_map
-        showMap()
+        showFragment(mapFragment)
+        mapFragment.refreshSettings()
         supportFragmentManager.executePendingTransactions()
-        mapFragment?.showRouteOnMap(route)
-    }
-
-    override fun onPause() {
-        super.onPause()
-        // Save last map position
-        
+        mapFragment.showRouteOnMap(route)
     }
 }
