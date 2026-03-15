@@ -382,7 +382,6 @@ class MapFragment : Fragment() {
 
     override fun onResume()  { super.onResume();  if (::mapView.isInitialized) mapView.onResume()  }
     override fun onPause()   { super.onPause();   if (::mapView.isInitialized) mapView.onPause()   }
-}
 
     fun savePosition(context: android.content.Context) {
         if (::mapView.isInitialized) {
@@ -390,3 +389,4 @@ class MapFragment : Fragment() {
             AppSettings.saveLastPosition(context, center.latitude, center.longitude, mapView.zoomLevelDouble)
         }
     }
+}

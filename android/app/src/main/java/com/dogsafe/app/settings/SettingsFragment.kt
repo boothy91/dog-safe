@@ -10,7 +10,6 @@ import android.widget.ArrayAdapter
 import android.widget.Spinner
 import android.widget.TextView
 import androidx.fragment.app.Fragment
-import com.dogsafe.app.BuildConfig
 import com.dogsafe.app.R
 import com.google.android.material.switchmaterial.SwitchMaterial
 
@@ -83,7 +82,7 @@ class SettingsFragment : Fragment() {
         }
 
         // --- About ---
-        view.findViewById<TextView>(R.id.textVersion).text = BuildConfig.VERSION_NAME
+        view.findViewById<TextView>(R.id.textVersion).text = "1.1.0"
 
         view.findViewById<View>(R.id.linkNaturalEngland).setOnClickListener {
             startActivity(Intent(Intent.ACTION_VIEW,
