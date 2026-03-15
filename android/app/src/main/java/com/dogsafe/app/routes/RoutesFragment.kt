@@ -103,6 +103,11 @@ class RoutesFragment : Fragment() {
         viewModel.loadRoutes(requireContext())
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (::adapter.isInitialized) viewModel.loadRoutes(requireContext())
+    }
+
     private fun openFilePicker() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
